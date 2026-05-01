@@ -1,0 +1,1790 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>CV & Anschreiben Generator</title>
+<style>
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:"Inter",system-ui,sans-serif; background:#f0f2f5; color:#2c3e50; min-height:100vh; }
+
+  header {
+    background:#fff; border-bottom:1px solid #e0e0e0;
+    padding:0.8rem 1.5rem; display:flex; align-items:center; gap:0.8rem;
+    box-shadow:0 1px 3px rgba(0,0,0,.06);
+  }
+  header h1 { font-size:1.15rem; font-weight:700; }
+  header span { font-size:0.78rem; color:#aaa; }
+
+  .main-layout { display:grid; grid-template-columns:390px 1fr; height:calc(100vh - 50px); }
+
+  /* LEFT */
+  .left-panel { background:#fff; border-right:1px solid #e0e0e0; overflow-y:auto; }
+  .panel-inner { padding:1.2rem; }
+
+  .slabel { font-size:0.68rem; font-weight:700; color:#aaa; text-transform:uppercase; letter-spacing:.07em; margin-bottom:0.55rem; display:block; }
+  hr.div { border:none; border-top:1px solid #f0f0f0; margin:1rem 0; }
+
+  .form-group { margin-bottom:0.8rem; }
+  label { display:block; font-size:0.77rem; font-weight:600; color:#555; margin-bottom:0.28rem; }
+  label .opt { font-weight:400; color:#bbb; }
+  input[type=text], select, textarea {
+    width:100%; border:1px solid #ddd; border-radius:6px; padding:0.48rem 0.65rem;
+    font-size:0.87rem; font-family:inherit; color:#2c3e50; background:#fafafa;
+    transition:border-color .15s; outline:none;
+  }
+  input[type=text]:focus, select:focus, textarea:focus { border-color:#4B5D67; background:#fff; }
+  textarea { resize:vertical; }
+  .row2 { display:grid; grid-template-columns:1fr 1fr; gap:0.6rem; }
+
+  /* Input mode toggle */
+  .input-mode { display:flex; gap:0.35rem; margin-bottom:0.5rem; }
+  .mode-btn {
+    padding:0.3rem 0.75rem; border:1.5px solid #ddd; border-radius:5px;
+    background:#fafafa; font-size:0.76rem; font-weight:600; cursor:pointer; color:#888; transition:all .15s;
+  }
+  .mode-btn.active { border-color:#4B5D67; background:#4B5D67; color:#fff; }
+
+  .url-row { display:flex; gap:0.4rem; }
+  .url-row input { flex:1; }
+  .fetch-btn {
+    padding:0.48rem 0.8rem; background:#4B5D67; color:#fff; border:none;
+    border-radius:6px; font-size:0.82rem; font-weight:600; cursor:pointer; white-space:nowrap;
+    transition:background .15s;
+  }
+  .fetch-btn:hover { background:#3a4a52; }
+  .fetch-btn:disabled { background:#aaa; cursor:not-allowed; }
+
+  /* Layout picker */
+  .layout-cards { display:flex; gap:0.5rem; margin-bottom:0; }
+  .layout-card {
+    flex:1; border:2px solid #e0e0e0; border-radius:8px; padding:0.6rem 0.5rem;
+    cursor:pointer; text-align:center; transition:all .15s; background:#fafafa;
+  }
+  .layout-card:hover { border-color:#aaa; }
+  .layout-card.active { border-color:#4B5D67; background:#f0f4f6; }
+  .layout-card .lc-preview { height:42px; margin-bottom:0.35rem; display:flex; gap:3px; }
+  .layout-card .lc-name { font-size:0.75rem; font-weight:700; color:#555; }
+  .layout-card.active .lc-name { color:#4B5D67; }
+
+  /* Layout preview mini-graphics */
+  .preview-modern { flex:1; display:flex; flex-direction:column; gap:2px; }
+  .preview-modern .row { background:#e0e6ea; border-radius:2px; height:6px; }
+  .preview-modern .row.header { height:10px; background:#4B5D67; }
+  .preview-modern .row.short { width:70%; }
+
+  .preview-sidebar { flex:1; display:flex; gap:2px; }
+  .preview-sidebar .col-left { width:35%; background:#4B5D67; border-radius:2px; }
+  .preview-sidebar .col-right { flex:1; display:flex; flex-direction:column; gap:2px; }
+  .preview-sidebar .col-right .row { background:#e0e6ea; border-radius:2px; height:6px; }
+  .preview-sidebar .col-right .row.short { width:75%; }
+
+  .preview-classic { flex:1; display:flex; flex-direction:column; gap:2px; }
+  .preview-classic .row { background:#d0d0d0; height:5px; }
+  .preview-classic .row.header { height:8px; background:#222; width:60%; }
+  .preview-classic .row.divider { height:1px; background:#555; }
+  .preview-classic .row.short { width:80%; }
+
+  /* Doc type */
+  .doc-type-group { display:flex; gap:0.35rem; margin-bottom:0.8rem; }
+  .doc-btn {
+    flex:1; padding:0.42rem; border:1.5px solid #ddd; border-radius:6px;
+    background:#fafafa; font-size:0.78rem; font-weight:600; cursor:pointer;
+    text-align:center; transition:all .15s; color:#777;
+  }
+  .doc-btn.active { border-color:#4B5D67; background:#4B5D67; color:#fff; }
+
+  /* Generate button */
+  .generate-btn {
+    width:100%; padding:0.75rem; background:#4B5D67; color:#fff; border:none;
+    border-radius:8px; font-size:0.92rem; font-weight:700; cursor:pointer;
+    transition:background .15s; display:flex; align-items:center; justify-content:center; gap:0.5rem;
+  }
+  .generate-btn:hover { background:#3a4a52; }
+  .generate-btn:disabled { background:#aaa; cursor:not-allowed; }
+  .spinner { display:none; width:15px; height:15px; border:2px solid rgba(255,255,255,.35); border-top-color:#fff; border-radius:50%; animation:spin .7s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  .error-msg { display:none; background:#fff0f0; border:1px solid #f5c6cb; color:#721c24; border-radius:6px; padding:0.5rem 0.7rem; font-size:0.8rem; margin-top:0.6rem; }
+
+  /* Projects */
+  .collapsible-header { display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none; }
+  .collapsible-header:hover .slabel { color:#4B5D67; }
+  .chevron { font-size:0.72rem; color:#bbb; transition:transform .2s; }
+  .chevron.open { transform:rotate(180deg); }
+  .collapsible-body { display:none; margin-top:0.6rem; }
+  .collapsible-body.open { display:block; }
+
+  .project-item { border:1px solid #eee; border-radius:6px; padding:0.55rem 0.7rem; margin-bottom:0.4rem; background:#fafafa; }
+  .project-item.hidden-proj { opacity:.4; }
+  .proj-row { display:flex; align-items:center; gap:0.4rem; }
+  .proj-main { flex:1; min-width:0; }
+  .proj-title { font-size:0.8rem; font-weight:600; color:#2c3e50; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .proj-meta { font-size:0.7rem; color:#aaa; margin-top:0.1rem; }
+  .proj-actions { display:flex; gap:0.25rem; flex-shrink:0; }
+  .proj-btn { background:none; border:1px solid #e8e8e8; border-radius:4px; padding:0.18rem 0.4rem; font-size:0.72rem; cursor:pointer; color:#888; transition:all .12s; }
+  .proj-btn:hover { background:#f0f0f0; }
+  .proj-btn.danger:hover { background:#fff0f0; border-color:#f5c6cb; color:#c0392b; }
+  .add-proj-btn { width:100%; padding:0.42rem; border:1.5px dashed #ccc; border-radius:6px; background:none; font-size:0.8rem; color:#aaa; cursor:pointer; transition:all .15s; margin-top:0.2rem; }
+  .add-proj-btn:hover { border-color:#4B5D67; color:#4B5D67; background:#f7f9fa; }
+
+  /* Entry items (experience / education) */
+  .entry-item { border:1px solid #eee; border-radius:6px; padding:0.55rem 0.7rem; margin-bottom:0.4rem; background:#fafafa; }
+  .entry-item.hidden-entry { opacity:.4; }
+  .entry-row { display:flex; align-items:center; gap:0.4rem; }
+  .entry-main { flex:1; min-width:0; }
+  .entry-title { font-size:0.81rem; font-weight:600; color:#2c3e50; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .entry-meta { font-size:0.7rem; color:#aaa; margin-top:0.1rem; }
+  .entry-actions { display:flex; gap:0.25rem; flex-shrink:0; }
+
+  /* Bullet point inputs in modal */
+  .bullets-list { display:flex; flex-direction:column; gap:0.35rem; margin-bottom:0.4rem; }
+  .bullet-row { display:flex; gap:0.3rem; align-items:flex-start; }
+  .bullet-row textarea { flex:1; min-height:38px; font-size:0.84rem; resize:vertical; }
+  .bullet-remove { padding:0.3rem 0.5rem; border:1px solid #e0e0e0; border-radius:5px; background:none; cursor:pointer; color:#bbb; font-size:0.8rem; flex-shrink:0; transition:all .12s; }
+  .bullet-remove:hover { background:#fff0f0; color:#c0392b; border-color:#f5c6cb; }
+  .add-bullet-btn { background:none; border:1px dashed #ccc; border-radius:5px; padding:0.3rem 0.6rem; font-size:0.78rem; color:#aaa; cursor:pointer; transition:all .15s; width:100%; }
+  .add-bullet-btn:hover { border-color:#4B5D67; color:#4B5D67; }
+  .skill-tags { display:flex; flex-wrap:wrap; gap:0.35rem; margin-bottom:0.45rem; }
+  .skill-tag-item {
+    display:inline-flex; align-items:center; gap:0.25rem; background:#f1f4f6;
+    border:1px solid #dde3e7; color:#4B5D67; border-radius:14px; padding:0.2rem 0.5rem; font-size:0.74rem;
+  }
+  .skill-tag-item button { border:none; background:none; color:#98a4ad; cursor:pointer; font-size:0.75rem; line-height:1; }
+  .skill-tag-item button:hover { color:#c0392b; }
+  .skill-add-row { display:flex; gap:0.35rem; margin-bottom:0.45rem; }
+  .skill-add-row input { flex:1; font-size:0.8rem; padding:0.35rem 0.5rem; }
+  .skill-add-btn {
+    border:1px solid #ddd; border-radius:6px; background:#fff; color:#666;
+    padding:0.3rem 0.55rem; font-size:0.75rem; cursor:pointer;
+  }
+  .skill-add-btn:hover { background:#f6f7f8; }
+
+  /* Modal */
+  .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.35); z-index:100; align-items:center; justify-content:center; }
+  .modal-overlay.open { display:flex; }
+  .modal { background:#fff; border-radius:10px; padding:1.4rem; width:460px; max-width:95vw; max-height:90vh; overflow-y:auto; box-shadow:0 8px 32px rgba(0,0,0,.15); }
+  .modal h3 { font-size:0.95rem; font-weight:700; margin-bottom:0.9rem; }
+  .modal-actions { display:flex; gap:0.5rem; justify-content:flex-end; margin-top:0.9rem; }
+  .btn-cancel { padding:0.45rem 1rem; border:1px solid #ddd; border-radius:6px; background:#fff; cursor:pointer; font-size:0.86rem; color:#555; }
+  .btn-cancel:hover { background:#f5f5f5; }
+  .btn-save { padding:0.45rem 1.1rem; border:none; border-radius:6px; background:#4B5D67; color:#fff; cursor:pointer; font-size:0.86rem; font-weight:600; }
+  .btn-save:hover { background:#3a4a52; }
+  .tags-hint { font-size:0.7rem; color:#bbb; margin-top:0.2rem; }
+
+  /* RIGHT */
+  .right-panel { display:flex; flex-direction:column; overflow:hidden; }
+  .tabs { display:flex; background:#fff; border-bottom:1px solid #e0e0e0; padding:0 0.8rem; }
+  .tab { padding:0.7rem 1rem; font-size:0.84rem; font-weight:600; color:#888; cursor:pointer; border-bottom:2px solid transparent; transition:all .15s; display:flex; align-items:center; gap:0.35rem; }
+  .tab.active { color:#4B5D67; border-bottom-color:#4B5D67; }
+  .tab:hover:not(.active) { color:#555; }
+  .badge { font-size:0.67rem; background:#e8f4fd; color:#2980b9; border-radius:10px; padding:0.1rem 0.38rem; font-weight:700; }
+  .tab.ready .badge { background:#d4edda; color:#155724; }
+  .tab-actions { margin-left:auto; display:flex; align-items:center; gap:0.4rem; padding:0.45rem 0; }
+  .action-btn { padding:0.36rem 0.8rem; border:1px solid #ddd; border-radius:6px; background:#fff; font-size:0.76rem; font-weight:600; cursor:pointer; color:#555; transition:all .15s; }
+  .action-btn:hover { background:#f5f5f5; }
+  .action-btn.primary { background:#4B5D67; color:#fff; border-color:#4B5D67; }
+  .action-btn.primary:hover { background:#3a4a52; }
+  .action-btn.copied { background:#d4edda; color:#155724; border-color:#c3e6cb; }
+
+  .preview-area { flex:1; overflow:hidden; background:#e8eaed; }
+  .tab-content { display:none; height:100%; }
+  .tab-content.active { display:block; }
+  iframe { width:100%; height:100%; border:none; }
+
+  /* Editor */
+  .editor-wrap { height:100%; overflow-y:auto; background:#f5f6f8; padding:1rem 1.2rem; display:flex; flex-direction:column; gap:1rem; }
+  .editor-section { background:#fff; border:1px solid #e4e6ea; border-radius:8px; padding:1rem; }
+  .editor-section-title { font-size:0.72rem; font-weight:700; color:#aaa; text-transform:uppercase; letter-spacing:.07em; margin-bottom:0.6rem; }
+  .editor-section textarea { width:100%; border:1px solid #e0e0e0; border-radius:6px; padding:0.45rem 0.6rem; font-size:0.84rem; font-family:inherit; color:#2c3e50; background:#fafafa; resize:vertical; outline:none; transition:border-color .15s; }
+  .editor-section textarea:focus { border-color:#4B5D67; background:#fff; }
+  .editor-job { margin-bottom:0.7rem; }
+  .editor-job-header { font-size:0.8rem; font-weight:600; color:#4B5D67; margin-bottom:0.35rem; }
+  .editor-bullet { display:flex; gap:0.3rem; align-items:flex-start; margin-bottom:0.3rem; }
+  .editor-bullet textarea { flex:1; min-height:34px; }
+  .editor-para { margin-bottom:0.5rem; }
+  .render-btn {
+    width:100%; padding:0.7rem; background:#2ecc71; color:#fff; border:none;
+    border-radius:8px; font-size:0.88rem; font-weight:700; cursor:pointer;
+    transition:background .15s; display:flex; align-items:center; justify-content:center; gap:0.5rem;
+  }
+  .render-btn:hover { background:#27ae60; }
+  .render-btn:disabled { background:#aaa; cursor:not-allowed; }
+  .editor-skills-grid { display:flex; flex-direction:column; gap:0.35rem; }
+  .editor-skill-row { display:grid; grid-template-columns:120px 1fr; gap:0.4rem; align-items:center; }
+  .editor-skill-row input { border:1px solid #e0e0e0; border-radius:6px; padding:0.38rem 0.55rem; font-size:0.83rem; font-family:inherit; outline:none; background:#fafafa; }
+  .editor-skill-row input:focus { border-color:#4B5D67; background:#fff; }
+
+  /* Inline AI improve */
+  .ai-improve-row { display:flex; gap:0.35rem; margin-top:0.3rem; }
+  .ai-improve-input {
+    flex:1; border:1px solid #e0e0e0; border-radius:6px; padding:0.35rem 0.55rem;
+    font-size:0.78rem; font-family:inherit; outline:none; background:#fafafa; color:#2c3e50;
+    transition:border-color .15s;
+  }
+  .ai-improve-input:focus { border-color:#9b59b6; background:#fff; }
+  .ai-improve-input::placeholder { color:#bbb; }
+  .ai-improve-btn {
+    padding:0.35rem 0.7rem; border:none; border-radius:6px; background:#9b59b6;
+    color:#fff; font-size:0.75rem; font-weight:600; cursor:pointer; white-space:nowrap;
+    transition:background .15s; display:flex; align-items:center; gap:0.3rem;
+  }
+  .ai-improve-btn:hover { background:#8e44ad; }
+  .ai-improve-btn:disabled { background:#ccc; cursor:not-allowed; }
+  .ai-improve-spinner { display:none; width:11px; height:11px; border:2px solid rgba(255,255,255,.35); border-top-color:#fff; border-radius:50%; animation:spin .7s linear infinite; }
+
+  /* Drag & drop */
+  .drag-handle { cursor:grab; color:#ccc; font-size:1rem; padding:0 0.3rem; user-select:none; flex-shrink:0; }
+  .drag-handle:active { cursor:grabbing; }
+  .editor-bullet[draggable=true] { transition:opacity .15s; }
+  .editor-bullet.drag-over { border-top:2px solid #4B5D67; }
+
+  .empty-state { display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; color:#ccc; gap:0.7rem; }
+  .empty-state p { font-size:0.88rem; }
+
+  /* Chat */
+  .chat-wrap { display:flex; flex-direction:column; height:100%; background:#f7f8fa; }
+  .chat-messages { flex:1; overflow-y:auto; padding:1rem; display:flex; flex-direction:column; gap:0.75rem; }
+  .chat-msg { max-width:82%; display:flex; flex-direction:column; gap:0.2rem; }
+  .chat-msg.user { align-self:flex-end; }
+  .chat-msg.assistant { align-self:flex-start; }
+  .chat-bubble {
+    padding:0.65rem 0.9rem; border-radius:12px; font-size:0.86rem; line-height:1.55;
+    word-break:break-word;
+  }
+  .chat-msg.user .chat-bubble { background:#4B5D67; color:#fff; border-bottom-right-radius:3px; }
+  .chat-msg.assistant .chat-bubble { background:#fff; color:#2c3e50; border:1px solid #e8e8e8; border-bottom-left-radius:3px; box-shadow:0 1px 3px rgba(0,0,0,.05); }
+  .chat-msg.assistant .chat-bubble strong { color:#2c3e50; }
+  .chat-msg.assistant .chat-bubble ul { padding-left:16px; margin:0.3em 0; }
+  .chat-msg.assistant .chat-bubble li { margin:0.2em 0; }
+  .chat-msg.assistant .chat-bubble p { margin:0.3em 0; }
+  .chat-msg.assistant .chat-bubble p:first-child { margin-top:0; }
+  .chat-msg.assistant .chat-bubble p:last-child { margin-bottom:0; }
+  .chat-meta { font-size:0.68rem; color:#bbb; padding:0 0.2rem; }
+  .chat-msg.user .chat-meta { text-align:right; }
+  .chat-typing { align-self:flex-start; }
+  .chat-typing .chat-bubble { background:#fff; border:1px solid #e8e8e8; }
+  .dots span { display:inline-block; width:6px; height:6px; background:#aaa; border-radius:50%; margin:0 2px; animation:bounce .9s infinite; }
+  .dots span:nth-child(2) { animation-delay:.15s; }
+  .dots span:nth-child(3) { animation-delay:.3s; }
+  @keyframes bounce { 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-5px)} }
+  .chat-empty { display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; gap:1rem; color:#bbb; padding:1.5rem; text-align:center; }
+  .chat-empty p { font-size:0.85rem; line-height:1.5; max-width:320px; }
+  .chat-suggestions { display:flex; flex-wrap:wrap; gap:0.4rem; justify-content:center; margin-top:0.25rem; }
+  .chat-suggestion { padding:0.35rem 0.75rem; border:1px solid #ddd; border-radius:20px; font-size:0.77rem; color:#666; cursor:pointer; background:#fff; transition:all .15s; }
+  .chat-suggestion:hover { border-color:#4B5D67; color:#4B5D67; background:#f0f4f6; }
+  .chat-input-row { display:flex; gap:0.5rem; padding:0.75rem; border-top:1px solid #e8e8e8; background:#fff; }
+  .chat-input {
+    flex:1; border:1px solid #ddd; border-radius:8px; padding:0.55rem 0.75rem;
+    font-size:0.87rem; font-family:inherit; outline:none; resize:none;
+    line-height:1.4; max-height:120px; overflow-y:auto; transition:border-color .15s;
+  }
+  .chat-input:focus { border-color:#4B5D67; }
+  .chat-send {
+    padding:0.55rem 1rem; background:#4B5D67; color:#fff; border:none; border-radius:8px;
+    font-size:0.85rem; font-weight:600; cursor:pointer; transition:background .15s; align-self:flex-end;
+  }
+  .chat-send:hover { background:#3a4a52; }
+  .chat-send:disabled { background:#aaa; cursor:not-allowed; }
+</style>
+</head>
+<body>
+
+<header>
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+    <rect width="24" height="24" rx="5" fill="#4B5D67"/>
+    <rect x="4" y="5" width="16" height="2" rx="1" fill="white"/>
+    <rect x="4" y="10" width="12" height="2" rx="1" fill="white"/>
+    <rect x="4" y="15" width="14" height="2" rx="1" fill="white"/>
+  </svg>
+  <h1>CV & Anschreiben Generator</h1>
+  <span>Gemini Flash</span>
+</header>
+
+<div class="main-layout">
+
+  <!-- LEFT PANEL -->
+  <div class="left-panel">
+    <div class="panel-inner">
+
+      <!-- Job posting: text or URL -->
+      <span class="slabel">Stellenausschreibung</span>
+      <div class="input-mode">
+        <button class="mode-btn active" data-mode="text" onclick="switchInputMode('text', this)">Text einfügen</button>
+        <button class="mode-btn" data-mode="url" onclick="switchInputMode('url', this)">URL laden</button>
+      </div>
+
+      <div id="textMode" class="form-group">
+        <textarea id="job_posting" rows="7" placeholder="Vollständige Stellenausschreibung einfügen… (Ctrl+Enter zum Generieren)"></textarea>
+      </div>
+
+      <div id="urlMode" class="form-group" style="display:none">
+        <div class="url-row">
+          <input type="text" id="job_url" placeholder="https://www.stepstone.de/job/..." />
+          <button class="fetch-btn" id="fetchBtn" onclick="fetchJobUrl()">Laden</button>
+        </div>
+        <div style="margin-top:0.4rem">
+          <textarea id="job_posting_url" rows="5" placeholder="Text wird hier geladen…" readonly style="font-size:0.78rem;color:#888;background:#f8f8f8"></textarea>
+        </div>
+      </div>
+
+      <hr class="div">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.55rem">
+        <span class="slabel" style="margin-bottom:0">Angaben</span>
+        <button class="fetch-btn" id="autoFillBtn" onclick="autoFillFields()" style="font-size:0.74rem;padding:0.28rem 0.7rem;background:#6c757d">✨ Auto-Ausfüllen</button>
+      </div>
+
+      <div class="row2">
+        <div class="form-group">
+          <label>Unternehmen <span class="opt">(opt.)</span></label>
+          <input type="text" id="company" placeholder="z.B. SAP SE"/>
+        </div>
+        <div class="form-group">
+          <label>Position <span class="opt">(opt.)</span></label>
+          <input type="text" id="position" placeholder="z.B. Product Manager"/>
+        </div>
+      </div>
+      <div class="row2">
+        <div class="form-group">
+          <label>Anrede <span class="opt">(opt.)</span></label>
+          <input type="text" id="contact" placeholder="Sehr geehrte Damen und Herren"/>
+        </div>
+        <div class="form-group">
+          <label>Ort</label>
+          <input type="text" id="city" placeholder="Berlin"/>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Firmenadresse <span class="opt">(opt. · für Anschreiben)</span></label>
+        <textarea id="company_address" rows="2" placeholder="z.B. Musterstraße 1&#10;10115 Berlin"></textarea>
+      </div>
+      <div class="form-group">
+        <label>Sprache</label>
+        <select id="language">
+          <option value="de">Deutsch</option>
+          <option value="en">English</option>
+        </select>
+      </div>
+
+      <hr class="div">
+      <span class="slabel">Layout (CV)</span>
+      <div class="layout-cards" id="layoutCards">
+        <div class="layout-card active" data-layout="modern" onclick="selectLayout(this)">
+          <div class="lc-preview">
+            <div class="preview-modern">
+              <div class="row header"></div>
+              <div class="row"></div>
+              <div class="row short"></div>
+              <div class="row"></div>
+              <div class="row short"></div>
+              <div class="row"></div>
+            </div>
+          </div>
+          <div class="lc-name">Modern</div>
+        </div>
+        <div class="layout-card" data-layout="sidebar" onclick="selectLayout(this)">
+          <div class="lc-preview">
+            <div class="preview-sidebar">
+              <div class="col-left"></div>
+              <div class="col-right">
+                <div class="row"></div>
+                <div class="row short"></div>
+                <div class="row"></div>
+                <div class="row short"></div>
+                <div class="row"></div>
+              </div>
+            </div>
+          </div>
+          <div class="lc-name">Sidebar</div>
+        </div>
+        <div class="layout-card" data-layout="classic" onclick="selectLayout(this)">
+          <div class="lc-preview">
+            <div class="preview-classic">
+              <div class="row header"></div>
+              <div class="row divider"></div>
+              <div class="row"></div>
+              <div class="row short"></div>
+              <div class="row divider"></div>
+              <div class="row"></div>
+              <div class="row short"></div>
+            </div>
+          </div>
+          <div class="lc-name">Klassisch</div>
+        </div>
+      </div>
+      <hr class="div">
+      <span class="slabel">Eigene Hinweise</span>
+      <div class="form-group">
+        <textarea id="custom_notes" rows="3" placeholder="z.B. Betone React-Erfahrung besonders. Erwähne KI-Interesse. Python ist hier wichtig."></textarea>
+      </div>
+
+      <hr class="div">
+
+      <!-- Experience -->
+      <div class="collapsible-header" onclick="toggleSection('experience')">
+        <span class="slabel" style="margin-bottom:0">Berufserfahrung</span>
+        <span class="chevron" id="chevron-experience">▼</span>
+      </div>
+      <div class="collapsible-body" id="body-experience">
+        <div id="experienceList"></div>
+        <button class="add-proj-btn" onclick="openEntryModal('experience')">+ Stelle hinzufügen</button>
+      </div>
+
+      <hr class="div">
+
+      <!-- Education -->
+      <div class="collapsible-header" onclick="toggleSection('education')">
+        <span class="slabel" style="margin-bottom:0">Ausbildung</span>
+        <span class="chevron" id="chevron-education">▼</span>
+      </div>
+      <div class="collapsible-body" id="body-education">
+        <div id="educationList"></div>
+        <button class="add-proj-btn" onclick="openEntryModal('education')">+ Eintrag hinzufügen</button>
+      </div>
+
+      <hr class="div">
+
+      <!-- Skills -->
+      <div class="collapsible-header" onclick="toggleSection('skills')">
+        <span class="slabel" style="margin-bottom:0">Skills & Sprachen</span>
+        <span class="chevron" id="chevron-skills">▼</span>
+      </div>
+      <div class="collapsible-body" id="body-skills">
+        <label style="font-size:0.72rem;margin-bottom:0.2rem">Hard Skills</label>
+        <div class="skill-add-row">
+          <input type="text" id="hardSkillInput" placeholder="z.B. React, SQL, Figma" onkeydown="if(event.key==='Enter'){event.preventDefault();addSkill('hard_skills');}"/>
+          <button class="skill-add-btn" onclick="addSkill('hard_skills')">+</button>
+        </div>
+        <div class="skill-tags" id="hardSkillsList"></div>
+
+        <label style="font-size:0.72rem;margin-bottom:0.2rem">Soft Skills</label>
+        <div class="skill-add-row">
+          <input type="text" id="softSkillInput" placeholder="z.B. Teamfähigkeit, Ownership" onkeydown="if(event.key==='Enter'){event.preventDefault();addSkill('soft_skills');}"/>
+          <button class="skill-add-btn" onclick="addSkill('soft_skills')">+</button>
+        </div>
+        <div class="skill-tags" id="softSkillsList"></div>
+
+        <label style="font-size:0.72rem;margin-bottom:0.2rem">Sprachen</label>
+        <div class="skill-add-row">
+          <input type="text" id="languageInput" placeholder="Sprache (z.B. Englisch)"/>
+          <input type="text" id="languageLevelInput" placeholder="Level (z.B. C1)" onkeydown="if(event.key==='Enter'){event.preventDefault();addLanguage();}"/>
+          <button class="skill-add-btn" onclick="addLanguage()">+</button>
+        </div>
+        <div class="skill-tags" id="languagesList"></div>
+      </div>
+
+      <hr class="div">
+
+      <!-- Projects -->
+      <div class="collapsible-header" onclick="toggleSection('projects')">
+        <span class="slabel" style="margin-bottom:0">Projekte verwalten</span>
+        <span class="chevron" id="chevron-projects">▼</span>
+      </div>
+      <div class="collapsible-body" id="body-projects">
+        <div id="projectsList"></div>
+        <button class="add-proj-btn" onclick="openAddModal()">+ Neues Projekt</button>
+      </div>
+
+      <hr class="div">
+      <span class="slabel">Generieren</span>
+      <div class="doc-type-group">
+        <div class="doc-btn active" data-value="both" onclick="selectDocType(this)">Beide</div>
+        <div class="doc-btn" data-value="cv" onclick="selectDocType(this)">Nur CV</div>
+        <div class="doc-btn" data-value="anschreiben" onclick="selectDocType(this)">Nur Anschreiben</div>
+      </div>
+      <button class="generate-btn" id="generateBtn" onclick="generate()">
+        <span id="btnText">Generieren</span>
+        <div class="spinner" id="spinner"></div>
+      </button>
+      <div class="error-msg" id="errorMsg"></div>
+
+    </div>
+  </div>
+
+  <!-- RIGHT PANEL -->
+  <div class="right-panel">
+    <div class="tabs">
+      <div class="tab active" id="tab-edit" onclick="switchTab('edit')">
+        ✏️ Bearbeiten <span class="badge" id="badge-edit">–</span>
+      </div>
+      <div class="tab" id="tab-cv" onclick="switchTab('cv')">
+        Lebenslauf <span class="badge" id="badge-cv">–</span>
+      </div>
+      <div class="tab" id="tab-anschreiben" onclick="switchTab('anschreiben')">
+        Anschreiben <span class="badge" id="badge-anschreiben">–</span>
+      </div>
+      <div class="tab" id="tab-chat" onclick="switchTab('chat')" style="margin-left:auto">
+        💬 KI-Feedback
+      </div>
+      <div class="tab-actions" id="docActions" style="display:none">
+        <button class="action-btn" id="copyHtmlBtn" onclick="copyHtml()">HTML kopieren</button>
+        <button class="action-btn" onclick="exportPdf()">Als PDF speichern</button>
+        <button class="action-btn primary" onclick="openInNewTab()">Neues Fenster</button>
+      </div>
+    </div>
+    <div class="preview-area">
+
+      <!-- EDITOR TAB -->
+      <div class="tab-content active" id="content-edit">
+        <div class="empty-state" id="empty-edit">
+          <svg width="52" height="52" viewBox="0 0 52 52" fill="none">
+            <rect x="8" y="4" width="36" height="44" rx="4" stroke="#ddd" stroke-width="2"/>
+            <rect x="15" y="15" width="22" height="2" rx="1" fill="#ddd"/>
+            <rect x="15" y="21" width="16" height="2" rx="1" fill="#ddd"/>
+            <rect x="15" y="27" width="20" height="2" rx="1" fill="#ddd"/>
+            <rect x="15" y="33" width="14" height="2" rx="1" fill="#ddd"/>
+          </svg>
+          <p>Generiere zuerst — dann kannst du den Inhalt hier bearbeiten</p>
+        </div>
+        <div class="editor-wrap" id="editorWrap" style="display:none">
+          <!-- CV editor -->
+          <div id="cvEditor" style="display:none">
+            <div class="editor-section">
+              <div class="editor-section-title">Profil-Statement</div>
+              <textarea id="edProfile" rows="3"></textarea>
+            </div>
+            <div class="editor-section" id="edExpSection">
+              <div class="editor-section-title">Berufserfahrung</div>
+              <div id="edExpList"></div>
+            </div>
+            <div class="editor-section" id="edEduSection">
+              <div class="editor-section-title">Ausbildung</div>
+              <div id="edEduList"></div>
+            </div>
+            <div class="editor-section">
+              <div class="editor-section-title">Projekte &amp; Erfolge</div>
+              <div id="edProjectsList" style="display:flex;flex-direction:column;gap:0.3rem;margin-bottom:0.5rem"></div>
+              <select id="edProjectsAdd" style="width:100%;font-size:0.82rem;padding:0.38rem 0.55rem;border:1.5px dashed #ccc;border-radius:6px;background:#fafafa;color:#888;cursor:pointer" onchange="addProjectToEditor(this)">
+                <option value="">+ Projekt hinzufügen…</option>
+              </select>
+            </div>
+            <div class="editor-section">
+              <div class="editor-section-title">Skills</div>
+              <div class="editor-skills-grid" id="edSkillsList"></div>
+            </div>
+            <button class="render-btn" id="renderCvBtn" onclick="renderPreview('cv')">
+              <span>Vorschau erstellen →</span>
+            </button>
+          </div>
+          <!-- Anschreiben editor -->
+          <div id="anschreibenEditor" style="display:none">
+            <div class="editor-section">
+              <div class="editor-section-title">Betreff</div>
+              <textarea id="edSubject" rows="2"></textarea>
+            </div>
+            <div class="editor-section">
+              <div class="editor-section-title">Absätze</div>
+              <div id="edParaList"></div>
+            </div>
+            <button class="render-btn" id="renderAnBtn" onclick="renderPreview('anschreiben')">
+              <span>Vorschau erstellen →</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- CV PREVIEW TAB -->
+      <div class="tab-content" id="content-cv">
+        <div class="empty-state" id="empty-cv">
+          <svg width="52" height="52" viewBox="0 0 52 52" fill="none">
+            <rect x="8" y="4" width="36" height="44" rx="4" stroke="#ddd" stroke-width="2"/>
+            <rect x="15" y="15" width="22" height="2" rx="1" fill="#ddd"/>
+            <rect x="15" y="21" width="16" height="2" rx="1" fill="#ddd"/>
+            <rect x="15" y="27" width="20" height="2" rx="1" fill="#ddd"/>
+            <rect x="15" y="33" width="14" height="2" rx="1" fill="#ddd"/>
+          </svg>
+          <p>Klicke „Vorschau erstellen" im Bearbeiten-Tab</p>
+        </div>
+        <iframe id="iframe-cv" style="display:none"></iframe>
+      </div>
+
+      <!-- ANSCHREIBEN PREVIEW TAB -->
+      <div class="tab-content" id="content-anschreiben">
+        <div class="empty-state" id="empty-anschreiben">
+          <svg width="52" height="52" viewBox="0 0 52 52" fill="none">
+            <rect x="8" y="4" width="36" height="44" rx="4" stroke="#ddd" stroke-width="2"/>
+            <rect x="15" y="15" width="22" height="2" rx="1" fill="#ddd"/>
+            <rect x="15" y="21" width="16" height="2" rx="1" fill="#ddd"/>
+            <rect x="15" y="27" width="20" height="2" rx="1" fill="#ddd"/>
+          </svg>
+          <p>Klicke „Vorschau erstellen" im Bearbeiten-Tab</p>
+        </div>
+        <iframe id="iframe-anschreiben" style="display:none"></iframe>
+      </div>
+
+      <!-- CHAT TAB -->
+      <div class="tab-content" id="content-chat">
+        <div class="chat-wrap">
+          <div class="chat-messages" id="chatMessages">
+            <div class="chat-empty" id="chatEmpty">
+              <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+                <rect x="2" y="6" width="36" height="24" rx="5" stroke="#ddd" stroke-width="2"/>
+                <path d="M10 34 L16 28 H2 Q2 34 10 34Z" fill="#ddd"/>
+                <rect x="9" y="15" width="14" height="2" rx="1" fill="#ddd"/>
+                <rect x="9" y="21" width="10" height="2" rx="1" fill="#ddd"/>
+              </svg>
+              <p>Generiere zuerst einen Lebenslauf oder ein Anschreiben — dann kann ich dir konkrete Verbesserungsvorschläge geben.</p>
+              <div class="chat-suggestions">
+                <span class="chat-suggestion" onclick="sendSuggestion(this)">Was ist überflüssig?</span>
+                <span class="chat-suggestion" onclick="sendSuggestion(this)">Was könnte verbessert werden?</span>
+                <span class="chat-suggestion" onclick="sendSuggestion(this)">Welche Keywords fehlen?</span>
+                <span class="chat-suggestion" onclick="sendSuggestion(this)">Passt das Anschreiben zur Stelle?</span>
+                <span class="chat-suggestion" onclick="sendSuggestion(this)">Was fällt HR zuerst auf?</span>
+              </div>
+            </div>
+          </div>
+          <div class="chat-input-row">
+            <textarea class="chat-input" id="chatInput" rows="1" placeholder="Frage stellen… (Enter zum Senden)" onkeydown="chatKeydown(event)" oninput="autoResize(this)"></textarea>
+            <button class="chat-send" id="chatSendBtn" onclick="sendChat()">Senden</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ENTRY MODAL (experience / education) -->
+<div class="modal-overlay" id="entryModalOverlay" onclick="closeEntryModalOnBackdrop(event)">
+  <div class="modal" style="width:520px">
+    <h3 id="entryModalTitle">Stelle hinzufügen</h3>
+    <input type="hidden" id="entrySection"/>
+    <input type="hidden" id="entryId"/>
+
+    <!-- experience fields -->
+    <div id="expFields">
+      <div class="row2">
+        <div class="form-group">
+          <label>Berufsbezeichnung *</label>
+          <input type="text" id="entryTitle" placeholder="z.B. Werkstudent – Product Management"/>
+        </div>
+        <div class="form-group">
+          <label>Unternehmen *</label>
+          <input type="text" id="entryCompany" placeholder="z.B. SAP SE"/>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Ort <span class="opt">(opt.)</span></label>
+        <input type="text" id="entryLocation" placeholder="z.B. Berlin"/>
+      </div>
+    </div>
+
+    <!-- education fields -->
+    <div id="eduFields" style="display:none">
+      <div class="form-group">
+        <label>Abschluss / Bezeichnung *</label>
+        <input type="text" id="entryDegree" placeholder="z.B. M.Sc. Wirtschaftsinformatik"/>
+      </div>
+      <div class="form-group">
+        <label>Institution *</label>
+        <input type="text" id="entryInstitution" placeholder="z.B. HTW Berlin"/>
+      </div>
+      <div class="form-group">
+        <label>Ort <span class="opt">(opt.)</span></label>
+        <input type="text" id="entryEduLocation" placeholder="z.B. Berlin"/>
+      </div>
+    </div>
+
+    <!-- shared date row -->
+    <div class="row2">
+      <div class="form-group">
+        <label>Von (JJJJ-MM)</label>
+        <input type="month" id="entryStart" style="color:#2c3e50"/>
+      </div>
+      <div class="form-group">
+        <label>Bis (JJJJ-MM)</label>
+        <input type="month" id="entryEnd" style="color:#2c3e50"/>
+      </div>
+    </div>
+    <div class="form-group" style="margin-top:-0.4rem;margin-bottom:0.8rem">
+      <label style="display:flex;align-items:center;gap:0.4rem;cursor:pointer;font-weight:400">
+        <input type="checkbox" id="entryCurrent" onchange="toggleCurrentCheck()"/>
+        Aktuell (läuft noch)
+      </label>
+    </div>
+
+    <!-- bullets / details -->
+    <div class="form-group">
+      <label id="bulletsLabel">Bullet Points</label>
+      <div class="bullets-list" id="bulletsList"></div>
+      <button type="button" class="add-bullet-btn" onclick="addBulletRow('')">+ Punkt hinzufügen</button>
+    </div>
+
+    <div class="form-group">
+      <label>Sichtbar im CV</label>
+      <select id="entryVisible">
+        <option value="true">Ja</option>
+        <option value="false">Nein</option>
+      </select>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeEntryModal()">Abbrechen</button>
+      <button class="btn-save" onclick="saveEntry()">Speichern</button>
+    </div>
+  </div>
+</div>
+
+<!-- PROJECT MODAL -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModalOnBackdrop(event)">
+  <div class="modal">
+    <h3 id="modalTitle">Projekt hinzufügen</h3>
+    <input type="hidden" id="modalProjectId"/>
+    <div class="form-group">
+      <label>Titel *</label>
+      <input type="text" id="modalProjTitle" placeholder="z.B. Hackathon x NITO (Oslo)"/>
+    </div>
+    <div class="form-group">
+      <label>Beschreibung *</label>
+      <textarea id="modalProjDesc" rows="4" placeholder="Was hast du gemacht? Was war das Ergebnis?"></textarea>
+    </div>
+    <div class="form-group">
+      <label>Tags <span class="opt">(opt.)</span></label>
+      <input type="text" id="modalProjTags" placeholder="react, frontend, data-analysis"/>
+      <div class="tags-hint">Komma-getrennt – hilft dem KI beim Einschätzen der Relevanz</div>
+    </div>
+    <div class="form-group">
+      <label>Note <span class="opt">(opt.)</span></label>
+      <input type="text" id="modalProjGrade" placeholder="z.B. 1.0" style="max-width:110px"/>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">Abbrechen</button>
+      <button class="btn-save" onclick="saveProject()">Speichern</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  let activeTab    = 'edit';
+  let docType      = 'both';
+  let layout       = 'modern';
+  let inputMode    = 'text';
+  let generatedDocs    = {};
+  let generatedContent = {};  // raw content dicts from /generate
+  let currentLanguage  = 'de';
+  let layoutStyles = {};
+  let projects = [];
+  let profile = { experience: [], education: [], hard_skills: [], soft_skills: [], languages: [] };
+  let editingId = null;
+
+  async function init() {
+    const [projectsRes, profileRes, layoutsRes] = await Promise.all([
+      fetch('/projects'),
+      fetch('/profile'),
+      fetch('/layouts')
+    ]);
+    projects = await projectsRes.json();
+    profile = await profileRes.json();
+    const layouts = await layoutsRes.json();
+    layouts.forEach(l => { layoutStyles[l.id] = l.style; });
+    renderProjects();
+    renderEntries('experience');
+    renderEntries('education');
+    renderSkills();
+  }
+
+  // ── Input mode ──
+  function switchInputMode(mode, btn) {
+    inputMode = mode;
+    document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('textMode').style.display = mode === 'text' ? 'block' : 'none';
+    document.getElementById('urlMode').style.display  = mode === 'url'  ? 'block' : 'none';
+  }
+
+  async function fetchJobUrl() {
+    const url = document.getElementById('job_url').value.trim();
+    if (!url) return;
+    const btn = document.getElementById('fetchBtn');
+    btn.disabled = true; btn.textContent = '…';
+    try {
+      const res  = await fetch('/fetch-job', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({url})
+      });
+      const data = await res.json();
+      if (data.error) { alert(data.error); return; }
+      document.getElementById('job_posting_url').value = data.text;
+      document.getElementById('job_posting_url').style.color = '#2c3e50';
+      document.getElementById('job_posting_url').removeAttribute('readonly');
+      autoFillFields();
+    } catch(e) {
+      alert('Fehler: ' + e.message);
+    } finally {
+      btn.disabled = false; btn.textContent = 'Laden';
+    }
+  }
+
+  async function autoFillFields() {
+    const text = getJobPosting();
+    if (!text) return;
+    const btn = document.getElementById('autoFillBtn');
+    btn.disabled = true; btn.textContent = '…';
+    try {
+      const res  = await fetch('/extract-fields', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({job_posting: text})
+      });
+      const data = await res.json();
+      if (data.error) { console.warn(data.error); return; }
+      if (data.company)         setIfEmpty('company',         data.company);
+      if (data.position)        setIfEmpty('position',        data.position);
+      if (data.contact)         setIfEmpty('contact',         data.contact);
+      if (data.city)            setIfEmpty('city',            data.city);
+      if (data.company_address) setIfEmpty('company_address', data.company_address);
+    } catch(e) {
+      console.warn('Auto-Ausfüllen fehlgeschlagen:', e.message);
+    } finally {
+      btn.disabled = false; btn.textContent = '✨ Auto-Ausfüllen';
+    }
+  }
+
+  function setIfEmpty(id, value) {
+    const el = document.getElementById(id);
+    if (el && !el.value.trim()) el.value = value;
+  }
+
+  function getJobPosting() {
+    if (inputMode === 'url') {
+      return document.getElementById('job_posting_url').value.trim();
+    }
+    return document.getElementById('job_posting').value.trim();
+  }
+
+  // ── Layout ──
+  function selectLayout(el) {
+    document.querySelectorAll('.layout-card').forEach(c => c.classList.remove('active'));
+    el.classList.add('active');
+    layout = el.dataset.layout;
+    applyLayoutToCurrentCv(layout);
+  }
+
+  function setLayoutCard(layoutId) {
+    document.querySelectorAll('.layout-card').forEach(c => c.classList.remove('active'));
+    const selected = document.querySelector(`.layout-card[data-layout="${layoutId}"]`);
+    if (selected) selected.classList.add('active');
+  }
+
+  // ── Doc type ──
+  function selectDocType(el) {
+    document.querySelectorAll('.doc-btn').forEach(b => b.classList.remove('active'));
+    el.classList.add('active');
+    docType = el.dataset.value;
+  }
+
+  // ── Collapsibles ──
+  function toggleSection(id) {
+    const body    = document.getElementById('body-' + id);
+    const chevron = document.getElementById('chevron-' + id);
+    body.classList.toggle('open');
+    chevron.classList.toggle('open');
+  }
+
+  // ── Tab ──
+  function switchTab(tab) {
+    activeTab = tab;
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    document.getElementById('tab-' + tab).classList.add('active');
+    document.getElementById('content-' + tab).classList.add('active');
+    const showActions = tab === 'cv' || tab === 'anschreiben';
+    document.getElementById('docActions').style.display = showActions ? 'flex' : 'none';
+    if (tab === 'chat') document.getElementById('chatInput').focus();
+  }
+
+  // ── Generate ──
+  function setLoading(on) {
+    const btn = document.getElementById('generateBtn');
+    document.getElementById('btnText').style.display = on ? 'none' : 'inline';
+    document.getElementById('spinner').style.display  = on ? 'block' : 'none';
+    btn.disabled = on;
+  }
+  function showError(msg) {
+    const el = document.getElementById('errorMsg');
+    el.textContent = msg; el.style.display = msg ? 'block' : 'none';
+  }
+  function setDoc(type, html) {
+    generatedDocs[type] = html;
+    const iframe = document.getElementById('iframe-' + type);
+    const empty  = document.getElementById('empty-' + type);
+    iframe.srcdoc = html; iframe.style.display = 'block'; empty.style.display = 'none';
+    document.getElementById('badge-' + type).textContent = '✓';
+    document.getElementById('tab-' + type).classList.add('ready');
+  }
+
+  async function generate() {
+    const jobPosting = getJobPosting();
+    if (!jobPosting) { showError('Bitte Stellenausschreibung einfügen oder URL laden.'); return; }
+    showError(''); setLoading(true);
+    currentLanguage = document.getElementById('language').value;
+    const payload = {
+      job_posting:  jobPosting,
+      company:      document.getElementById('company').value,
+      position:     document.getElementById('position').value,
+      contact:      document.getElementById('contact').value || 'Sehr geehrte Damen und Herren',
+      city:         document.getElementById('city').value || 'Soest',
+      language:     currentLanguage,
+      doc_type:     docType,
+      custom_notes:    document.getElementById('custom_notes').value,
+      company_address: document.getElementById('company_address').value,
+      layout,
+    };
+    try {
+      const res  = await fetch('/generate', {
+        method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (data.error) { showError(data.error); return; }
+      if (data.layout_used) layout = data.layout_used;
+
+      if (data.cv_content)          { generatedContent.cv = data.cv_content; buildCvEditor(data.cv_content); }
+      if (data.anschreiben_content) { generatedContent.anschreiben = data.anschreiben_content; buildAnschreibenEditor(data.anschreiben_content); }
+
+      // Show editor tab
+      document.getElementById('empty-edit').style.display = 'none';
+      document.getElementById('editorWrap').style.display = 'flex';
+      document.getElementById('cvEditor').style.display = data.cv_content ? 'block' : 'none';
+      document.getElementById('anschreibenEditor').style.display = data.anschreiben_content ? 'block' : 'none';
+      document.getElementById('badge-edit').textContent = '✓';
+      document.getElementById('tab-edit').classList.add('ready');
+      switchTab('edit');
+    } catch(e) {
+      showError('Verbindungsfehler: ' + e.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // ── Editor builders ──
+  function buildCvEditor(content) {
+    document.getElementById('edProfile').value = content.profile || '';
+
+    // Experience
+    const expList = document.getElementById('edExpList');
+    expList.innerHTML = '';
+    (content.experience || []).forEach((item, i) => {
+      const entry = (profile.experience || []).find(e => e.id === item.id) || {};
+      const title = (item.title || entry.title || item.id) + (entry.company ? ` @ ${entry.company}` : '');
+      const div = document.createElement('div');
+      div.className = 'editor-job';
+      div.innerHTML = `<div class="editor-job-header">${esc(title)}</div>`;
+      (item.bullets || []).forEach((b, bi) => {
+        const row = document.createElement('div');
+        row.className = 'editor-bullet';
+        row.innerHTML = `<textarea rows="2" data-exp="${i}" data-bi="${bi}">${esc(b)}</textarea>
+          <button type="button" class="bullet-remove" title="Entfernen" onclick="this.closest('.editor-bullet').remove()">✕</button>`;
+        div.appendChild(row);
+      });
+      expList.appendChild(div);
+    });
+
+    // Education – just show IDs as read-only info, no editable bullets needed
+    const eduList = document.getElementById('edEduList');
+    eduList.innerHTML = '';
+    (content.education || []).forEach(item => {
+      const entry = (profile.education || []).find(e => e.id === item.id) || {};
+      const title = entry.degree ? `${entry.degree} – ${entry.institution || ''}` : item.id;
+      const div = document.createElement('div');
+      div.style.cssText = 'font-size:0.82rem;color:#555;padding:0.25rem 0;border-bottom:1px solid #f0f0f0;';
+      div.textContent = title;
+      eduList.appendChild(div);
+    });
+
+    // Projects
+    buildProjectEditor(content.projects || []);
+
+    // Skills
+    const skillsList = document.getElementById('edSkillsList');
+    skillsList.innerHTML = '';
+    Object.entries(content.skills || {}).forEach(([cat, val]) => {
+      const row = document.createElement('div');
+      row.className = 'editor-skill-row';
+      row.innerHTML = `<input type="text" value="${esc(cat)}" data-skill-cat placeholder="Kategorie"/>
+                       <input type="text" value="${esc(val)}" data-skill-val placeholder="Skills…"/>`;
+      skillsList.appendChild(row);
+    });
+  }
+
+  function buildProjectEditor(selectedItems) {
+    const list = document.getElementById('edProjectsList');
+    list.innerHTML = '';
+    selectedItems.forEach(item => {
+      const id = typeof item === 'string' ? item : item.id;
+      addProjectRow(id, typeof item === 'object' ? item : null);
+    });
+    rebuildProjectDropdown();
+  }
+
+  function addProjectRow(id, contentItem = null) {
+    const p = projects.find(x => x.id === id);
+    if (!p) return;
+    const list = document.getElementById('edProjectsList');
+    const displayTitle = (contentItem && contentItem.title) ? contentItem.title : p.title;
+    const row = document.createElement('div');
+    row.className = 'editor-bullet';
+    row.dataset.projectId = id;
+    if (contentItem) row.dataset.projectContent = JSON.stringify(contentItem);
+    row.draggable = true;
+    row.innerHTML = `<span class="drag-handle" title="Verschieben">⠿</span>
+      <span style="flex:1;font-size:0.82rem;color:#2c3e50;padding:0.35rem 0.1rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(displayTitle)}">${esc(displayTitle)}</span>
+      <button type="button" class="bullet-remove" title="Entfernen" onclick="removeProjectRow(this,'${id}')">✕</button>`;
+    row.addEventListener('dragstart', onProjDragStart);
+    row.addEventListener('dragover',  onProjDragOver);
+    row.addEventListener('dragleave', onProjDragLeave);
+    row.addEventListener('drop',      onProjDrop);
+    row.addEventListener('dragend',   onProjDragEnd);
+    list.appendChild(row);
+    rebuildProjectDropdown();
+  }
+
+  function removeProjectRow(btn, id) {
+    btn.closest('.editor-bullet').remove();
+    rebuildProjectDropdown();
+  }
+
+  function rebuildProjectDropdown() {
+    const sel = document.getElementById('edProjectsAdd');
+    const selected = new Set([...document.querySelectorAll('#edProjectsList [data-project-id]')].map(r => r.dataset.projectId));
+    sel.innerHTML = '<option value="">+ Projekt hinzufügen…</option>';
+    projects.filter(p => p.visible && !selected.has(p.id)).forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p.id;
+      opt.textContent = p.title.length > 60 ? p.title.slice(0, 58) + '…' : p.title;
+      sel.appendChild(opt);
+    });
+  }
+
+  function addProjectToEditor(sel) {
+    const id = sel.value;
+    if (!id) return;
+    addProjectRow(id);
+    sel.value = '';
+  }
+
+  let dragSrc = null;
+  function onProjDragStart(e) {
+    dragSrc = this;
+    e.dataTransfer.effectAllowed = 'move';
+    this.style.opacity = '0.4';
+  }
+  function onProjDragOver(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    this.classList.add('drag-over');
+  }
+  function onProjDragLeave() { this.classList.remove('drag-over'); }
+  function onProjDrop(e) {
+    e.preventDefault();
+    this.classList.remove('drag-over');
+    if (dragSrc && dragSrc !== this) {
+      const list = document.getElementById('edProjectsList');
+      const kids = [...list.children];
+      const srcIdx  = kids.indexOf(dragSrc);
+      const destIdx = kids.indexOf(this);
+      if (srcIdx < destIdx) list.insertBefore(dragSrc, this.nextSibling);
+      else                  list.insertBefore(dragSrc, this);
+    }
+  }
+  function onProjDragEnd() {
+    this.style.opacity = '';
+    document.querySelectorAll('#edProjectsList .drag-over').forEach(el => el.classList.remove('drag-over'));
+    dragSrc = null;
+  }
+
+  function readProjectIds() {
+    return [...document.querySelectorAll('#edProjectsList [data-project-id]')].map(r => {
+      if (r.dataset.projectContent) {
+        try { return JSON.parse(r.dataset.projectContent); } catch(e) {}
+      }
+      return r.dataset.projectId;
+    });
+  }
+
+  function buildAnschreibenEditor(content) {
+    document.getElementById('edSubject').value = content.subject || '';
+    const paraList = document.getElementById('edParaList');
+    paraList.innerHTML = '';
+    (content.paragraphs || []).forEach((p, i) => {
+      paraList.appendChild(makeParaBlock(p, i));
+    });
+  }
+
+  function makeParaBlock(text, idx) {
+    const div = document.createElement('div');
+    div.className = 'editor-para';
+    div.style.marginBottom = '0.7rem';
+    div.innerHTML = `
+      <div class="editor-bullet">
+        <textarea rows="4" data-para="${idx}">${esc(text)}</textarea>
+        <button type="button" class="bullet-remove" title="Entfernen" onclick="this.closest('.editor-para').remove()">✕</button>
+      </div>
+      <div class="ai-improve-row">
+        <input type="text" class="ai-improve-input" placeholder="KI-Anweisung: z.B. Kürzer fassen, React betonen…"
+          onkeydown="if(event.key==='Enter'){event.preventDefault();improveParaWithAI(this);}"/>
+        <button type="button" class="ai-improve-btn" onclick="improveParaWithAI(this.previousElementSibling)">
+          <span>✨ KI</span>
+          <div class="ai-improve-spinner"></div>
+        </button>
+      </div>`;
+    return div;
+  }
+
+  async function improveParaWithAI(inputEl) {
+    const paraDiv = inputEl.closest('.editor-para');
+    const ta = paraDiv.querySelector('textarea');
+    const instruction = inputEl.value.trim();
+    if (!instruction) { inputEl.focus(); return; }
+    const text = ta.value.trim();
+    if (!text) return;
+
+    const btn = inputEl.nextElementSibling;
+    btn.disabled = true;
+    btn.querySelector('span').style.display = 'none';
+    btn.querySelector('.ai-improve-spinner').style.display = 'block';
+
+    try {
+      const res = await fetch('/improve-text', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ text, instruction })
+      });
+      const data = await res.json();
+      if (data.error) { alert('Fehler: ' + data.error); return; }
+      ta.value = data.text;
+      inputEl.value = '';
+      ta.style.background = '#f0faf4';
+      setTimeout(() => { ta.style.background = ''; }, 1200);
+    } catch(e) {
+      alert('Verbindungsfehler: ' + e.message);
+    } finally {
+      btn.disabled = false;
+      btn.querySelector('span').style.display = '';
+      btn.querySelector('.ai-improve-spinner').style.display = 'none';
+    }
+  }
+
+  // ── Read editor back into content dict ──
+  function readCvContent() {
+    const content = JSON.parse(JSON.stringify(generatedContent.cv || {}));
+    content.profile = document.getElementById('edProfile').value;
+
+    // bullets — re-collect per job from remaining DOM rows
+    document.querySelectorAll('#edExpList .editor-job').forEach((jobDiv, expIdx) => {
+      if (content.experience && content.experience[expIdx]) {
+        content.experience[expIdx].bullets = [...jobDiv.querySelectorAll('textarea')]
+          .map(ta => ta.value)
+          .filter(v => v.trim());
+      }
+    });
+
+    // skills
+    const skillsEl = document.querySelectorAll('#edSkillsList .editor-skill-row');
+    const skills = {};
+    skillsEl.forEach(row => {
+      const cat = row.querySelector('[data-skill-cat]').value.trim();
+      const val = row.querySelector('[data-skill-val]').value.trim();
+      if (cat) skills[cat] = val;
+    });
+    content.skills = skills;
+    content.projects = readProjectIds();
+    return content;
+  }
+
+  function readAnschreibenContent() {
+    const content = JSON.parse(JSON.stringify(generatedContent.anschreiben || {}));
+    content.subject = document.getElementById('edSubject').value;
+    content.paragraphs = [...document.querySelectorAll('#edParaList textarea')]
+      .map(ta => ta.value)
+      .filter(v => v.trim());
+    return content;
+  }
+
+  // ── Render preview ──
+  async function renderPreview(type) {
+    const btn = document.getElementById(type === 'cv' ? 'renderCvBtn' : 'renderAnBtn');
+    btn.disabled = true;
+    btn.querySelector('span').textContent = 'Wird gerendert…';
+    try {
+      const payload = {
+        doc_type: type,
+        language: currentLanguage,
+        content:  type === 'cv' ? readCvContent() : readAnschreibenContent(),
+        layout,
+      };
+      const res  = await fetch('/render', {
+        method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (data.error) { alert('Render-Fehler: ' + data.error); return; }
+      setDoc(type, data.html);
+      switchTab(type);
+    } catch(e) {
+      alert('Verbindungsfehler: ' + e.message);
+    } finally {
+      btn.disabled = false;
+      btn.querySelector('span').textContent = 'Vorschau erstellen →';
+    }
+  }
+
+  function applyLayoutToCurrentCv(layoutId) {
+    // With new two-step approach, re-render if we have content
+    if (generatedContent.cv) {
+      layout = layoutId;
+      renderPreview('cv');
+    }
+  }
+
+  // ── Actions ──
+  async function copyHtml() {
+    const html = generatedDocs[activeTab];
+    if (!html) { alert('Zuerst Dokument generieren.'); return; }
+    await navigator.clipboard.writeText(html);
+    const btn = document.getElementById('copyHtmlBtn');
+    btn.textContent = '✓ Kopiert!'; btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'HTML kopieren'; btn.classList.remove('copied'); }, 2000);
+  }
+
+  function buildPdfFilename(docType) {
+    const company  = (document.getElementById('company').value  || '').trim();
+    const position = (document.getElementById('position').value || '').trim();
+    const today    = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+    const type     = docType === 'anschreiben' ? 'Anschreiben' : 'CV';
+    const parts    = [type, company, position, today].filter(Boolean);
+    return parts.join('_').replace(/\s+/g, '_').replace(/[^A-Za-z0-9_\-äöüÄÖÜß]/g, '') + '.pdf';
+  }
+
+  async function exportPdf() {
+    const html = generatedDocs[activeTab];
+    if (!html) { alert('Zuerst Dokument generieren.'); return; }
+    const filename = buildPdfFilename(activeTab);
+    const htmlFilename = filename.replace('.pdf', '.html');
+
+    // Save to server folder silently
+    try {
+      await fetch('/save', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ doc_type: activeTab, filename: htmlFilename, html })
+      });
+    } catch(e) { console.warn('Speichern fehlgeschlagen:', e.message); }
+
+    // Open print dialog for PDF export
+    const titled = html.replace(/<title>[^<]*<\/title>/i, `<title>${filename.replace('.pdf','')}</title>`);
+    const win = window.open('', '_blank');
+    win.document.write(titled);
+    win.document.close();
+    win.addEventListener('load', () => { win.print(); });
+  }
+
+  function openInNewTab() {
+    const html = generatedDocs[activeTab];
+    if (!html) { alert('Zuerst Dokument generieren.'); return; }
+    const blob = new Blob([html], {type:'text/html'});
+    window.open(URL.createObjectURL(blob), '_blank');
+  }
+
+  // ── Projects ──
+  function renderProjects() {
+    const list = document.getElementById('projectsList');
+    list.innerHTML = '';
+    if (!projects.length) {
+      list.innerHTML = '<p style="font-size:0.78rem;color:#ccc;margin-bottom:0.4rem">Keine Projekte.</p>';
+      return;
+    }
+    projects.forEach(p => {
+      const d = document.createElement('div');
+      d.className = 'project-item' + (p.visible ? '' : ' hidden-proj');
+      d.innerHTML = `
+        <div class="proj-row">
+          <div class="proj-main">
+            <div class="proj-title" title="${esc(p.title)}">${esc(p.title)}</div>
+            <div class="proj-meta">${(p.tags||[]).join(' · ')}${p.grade ? ' · Note '+p.grade : ''}</div>
+          </div>
+          <div class="proj-actions">
+            <button class="proj-btn" title="${p.visible?'Ausblenden':'Einblenden'}" onclick="toggleVisible('${p.id}')">${p.visible?'👁':'🙈'}</button>
+            <button class="proj-btn" onclick="openEditModal('${p.id}')">✏️</button>
+            <button class="proj-btn danger" onclick="deleteProject('${p.id}')">🗑</button>
+          </div>
+        </div>`;
+      list.appendChild(d);
+    });
+  }
+
+  function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+  async function toggleVisible(id) {
+    const p = projects.find(x=>x.id===id); if(!p) return;
+    await fetch(`/projects/${id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({...p,visible:!p.visible})});
+    p.visible=!p.visible; renderProjects();
+  }
+
+  async function deleteProject(id) {
+    if(!confirm('Projekt löschen?')) return;
+    await fetch(`/projects/${id}`,{method:'DELETE'});
+    projects=projects.filter(p=>p.id!==id); renderProjects();
+  }
+
+  function openAddModal() {
+    editingId=null;
+    document.getElementById('modalTitle').textContent='Projekt hinzufügen';
+    document.getElementById('modalProjectId').value='';
+    document.getElementById('modalProjTitle').value='';
+    document.getElementById('modalProjDesc').value='';
+    document.getElementById('modalProjTags').value='';
+    document.getElementById('modalProjGrade').value='';
+    document.getElementById('modalOverlay').classList.add('open');
+  }
+
+  function openEditModal(id) {
+    const p=projects.find(x=>x.id===id); if(!p) return;
+    editingId=id;
+    document.getElementById('modalTitle').textContent='Projekt bearbeiten';
+    document.getElementById('modalProjectId').value=id;
+    document.getElementById('modalProjTitle').value=p.title;
+    document.getElementById('modalProjDesc').value=p.description;
+    document.getElementById('modalProjTags').value=(p.tags||[]).join(', ');
+    document.getElementById('modalProjGrade').value=p.grade||'';
+    document.getElementById('modalOverlay').classList.add('open');
+  }
+
+  function closeModal() { document.getElementById('modalOverlay').classList.remove('open'); }
+  function closeModalOnBackdrop(e) { if(e.target===document.getElementById('modalOverlay')) closeModal(); }
+
+  async function saveProject() {
+    const title=document.getElementById('modalProjTitle').value.trim();
+    const desc =document.getElementById('modalProjDesc').value.trim();
+    if(!title||!desc){alert('Titel und Beschreibung sind Pflicht.');return;}
+    const tags =document.getElementById('modalProjTags').value.split(',').map(t=>t.trim()).filter(Boolean);
+    const grade=document.getElementById('modalProjGrade').value.trim()||null;
+    if(editingId){
+      const res=await fetch(`/projects/${editingId}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({title,description:desc,tags,grade})});
+      const u=await res.json();
+      const idx=projects.findIndex(p=>p.id===editingId); if(idx!==-1) projects[idx]=u;
+    } else {
+      const res=await fetch('/projects',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({title,description:desc,tags,grade,visible:true})});
+      projects.push(await res.json());
+    }
+    renderProjects(); closeModal();
+  }
+
+  // ── Profile entries (experience / education) ──
+  function renderEntries(section) {
+    const list = document.getElementById(section + 'List');
+    const entries = [...(profile[section] || [])];
+    const key = (e) => e.current ? '9999-99' : (e.end || e.start || '0000-00');
+    entries.sort((a, b) => key(b).localeCompare(key(a)));
+
+    list.innerHTML = '';
+    if (!entries.length) {
+      list.innerHTML = '<p style="font-size:0.78rem;color:#ccc;margin-bottom:0.4rem">Keine Einträge.</p>';
+      return;
+    }
+
+    entries.forEach(e => {
+      const title = section === 'experience'
+        ? (e.title || 'Ohne Titel')
+        : (e.degree || 'Ohne Bezeichnung');
+      const metaMain = section === 'experience'
+        ? (e.company || '')
+        : (e.institution || '');
+      const period = `${e.start || '–'} – ${e.current ? 'heute' : (e.end || '–')}`;
+
+      const d = document.createElement('div');
+      d.className = 'entry-item' + (e.visible === false ? ' hidden-entry' : '');
+      d.innerHTML = `
+        <div class="entry-row">
+          <div class="entry-main">
+            <div class="entry-title" title="${esc(title)}">${esc(title)}</div>
+            <div class="entry-meta">${esc(metaMain)} · ${esc(period)}</div>
+          </div>
+          <div class="entry-actions">
+            <button class="proj-btn" title="${e.visible === false ? 'Einblenden' : 'Ausblenden'}" onclick="toggleEntryVisible('${section}','${e.id}')">${e.visible === false ? '🙈' : '👁'}</button>
+            <button class="proj-btn" onclick="openEntryModal('${section}','${e.id}')">✏️</button>
+            <button class="proj-btn danger" onclick="deleteEntry('${section}','${e.id}')">🗑</button>
+          </div>
+        </div>`;
+      list.appendChild(d);
+    });
+  }
+
+  function addBulletRow(text = '') {
+    const list = document.getElementById('bulletsList');
+    const row = document.createElement('div');
+    row.className = 'bullet-row';
+    row.innerHTML = `
+      <textarea rows="2" placeholder="Punkt beschreiben...">${esc(text)}</textarea>
+      <button type="button" class="bullet-remove" onclick="this.parentElement.remove()">✕</button>
+    `;
+    list.appendChild(row);
+  }
+
+  function clearEntryForm() {
+    document.getElementById('entryId').value = '';
+    document.getElementById('entryTitle').value = '';
+    document.getElementById('entryCompany').value = '';
+    document.getElementById('entryLocation').value = '';
+    document.getElementById('entryDegree').value = '';
+    document.getElementById('entryInstitution').value = '';
+    document.getElementById('entryEduLocation').value = '';
+    document.getElementById('entryStart').value = '';
+    document.getElementById('entryEnd').value = '';
+    document.getElementById('entryCurrent').checked = false;
+    document.getElementById('entryVisible').value = 'true';
+    document.getElementById('bulletsList').innerHTML = '';
+    addBulletRow('');
+    toggleCurrentCheck();
+  }
+
+  function openEntryModal(section, id = null) {
+    document.getElementById('entrySection').value = section;
+    clearEntryForm();
+    const isExperience = section === 'experience';
+
+    document.getElementById('expFields').style.display = isExperience ? 'block' : 'none';
+    document.getElementById('eduFields').style.display = isExperience ? 'none' : 'block';
+    document.getElementById('entryModalTitle').textContent = id
+      ? (isExperience ? 'Stelle bearbeiten' : 'Ausbildung bearbeiten')
+      : (isExperience ? 'Stelle hinzufügen' : 'Ausbildung hinzufügen');
+    document.getElementById('bulletsLabel').textContent = isExperience ? 'Bullet Points' : 'Details';
+
+    if (id) {
+      const entry = (profile[section] || []).find(x => x.id === id);
+      if (!entry) return;
+
+      document.getElementById('entryId').value = id;
+      document.getElementById('entryStart').value = entry.start || '';
+      document.getElementById('entryEnd').value = entry.end || '';
+      document.getElementById('entryCurrent').checked = !!entry.current;
+      document.getElementById('entryVisible').value = (entry.visible === false) ? 'false' : 'true';
+
+      if (isExperience) {
+        document.getElementById('entryTitle').value = entry.title || '';
+        document.getElementById('entryCompany').value = entry.company || '';
+        document.getElementById('entryLocation').value = entry.location || '';
+      } else {
+        document.getElementById('entryDegree').value = entry.degree || '';
+        document.getElementById('entryInstitution').value = entry.institution || '';
+        document.getElementById('entryEduLocation').value = entry.location || '';
+      }
+
+      const list = document.getElementById('bulletsList');
+      list.innerHTML = '';
+      const points = isExperience ? (entry.bullets || []) : (entry.details || []);
+      if (points.length) points.forEach(p => addBulletRow(p));
+      else addBulletRow('');
+      toggleCurrentCheck();
+    }
+
+    document.getElementById('entryModalOverlay').classList.add('open');
+  }
+
+  function closeEntryModal() {
+    document.getElementById('entryModalOverlay').classList.remove('open');
+  }
+
+  function closeEntryModalOnBackdrop(e) {
+    if (e.target === document.getElementById('entryModalOverlay')) closeEntryModal();
+  }
+
+  function toggleCurrentCheck() {
+    const current = document.getElementById('entryCurrent').checked;
+    const endInput = document.getElementById('entryEnd');
+    endInput.disabled = current;
+    if (current) endInput.value = '';
+  }
+
+  async function saveEntry() {
+    const section = document.getElementById('entrySection').value;
+    const id = document.getElementById('entryId').value;
+    const isExperience = section === 'experience';
+
+    const start = document.getElementById('entryStart').value || null;
+    const current = document.getElementById('entryCurrent').checked;
+    const end = current ? null : (document.getElementById('entryEnd').value || null);
+    const visible = document.getElementById('entryVisible').value === 'true';
+    const points = [...document.querySelectorAll('#bulletsList textarea')]
+      .map(x => x.value.trim())
+      .filter(Boolean);
+
+    let payload;
+    if (isExperience) {
+      const title = document.getElementById('entryTitle').value.trim();
+      const company = document.getElementById('entryCompany').value.trim();
+      const location = document.getElementById('entryLocation').value.trim();
+      if (!title || !company) {
+        alert('Berufsbezeichnung und Unternehmen sind Pflicht.');
+        return;
+      }
+      payload = { title, company, location, start, end, current, bullets: points, visible };
+    } else {
+      const degree = document.getElementById('entryDegree').value.trim();
+      const institution = document.getElementById('entryInstitution').value.trim();
+      const location = document.getElementById('entryEduLocation').value.trim();
+      if (!degree || !institution) {
+        alert('Abschluss und Institution sind Pflicht.');
+        return;
+      }
+      payload = { degree, institution, location, start, end, current, details: points, visible };
+    }
+
+    try {
+      if (id) {
+        const res = await fetch(`/profile/${section}/${id}`, {
+          method: 'PUT',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify(payload)
+        });
+        const updated = await res.json();
+        if (updated.error) {
+          alert(updated.error);
+          return;
+        }
+        const idx = (profile[section] || []).findIndex(x => x.id === id);
+        if (idx !== -1) profile[section][idx] = updated;
+      } else {
+        const res = await fetch(`/profile/${section}`, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify(payload)
+        });
+        const created = await res.json();
+        if (created.error) {
+          alert(created.error);
+          return;
+        }
+        profile[section] = [...(profile[section] || []), created];
+      }
+      renderEntries(section);
+      closeEntryModal();
+    } catch (e) {
+      alert('Fehler beim Speichern: ' + e.message);
+    }
+  }
+
+  async function toggleEntryVisible(section, id) {
+    const entry = (profile[section] || []).find(x => x.id === id);
+    if (!entry) return;
+    const payload = {...entry, visible: entry.visible === false ? true : false};
+    const res = await fetch(`/profile/${section}/${id}`, {
+      method: 'PUT',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload)
+    });
+    const updated = await res.json();
+    if (updated.error) return alert(updated.error);
+    const idx = profile[section].findIndex(x => x.id === id);
+    if (idx !== -1) profile[section][idx] = updated;
+    renderEntries(section);
+  }
+
+  async function deleteEntry(section, id) {
+    if (!confirm('Eintrag löschen?')) return;
+    const res = await fetch(`/profile/${section}/${id}`, { method: 'DELETE' });
+    const data = await res.json();
+    if (data.error) return alert(data.error);
+    profile[section] = (profile[section] || []).filter(x => x.id !== id);
+    renderEntries(section);
+  }
+
+  function renderSkillList(containerId, items, formatter) {
+    const box = document.getElementById(containerId);
+    box.innerHTML = '';
+    if (!items || !items.length) {
+      box.innerHTML = '<span style="font-size:0.72rem;color:#bbb">Noch nichts hinzugefügt.</span>';
+      return;
+    }
+    items.forEach(item => {
+      const tag = document.createElement('span');
+      tag.className = 'skill-tag-item';
+      const text = document.createElement('span');
+      text.textContent = formatter(item);
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.title = 'Löschen';
+      btn.textContent = '✕';
+      btn.onclick = () => deleteSkillItem(containerId, item.id);
+      tag.appendChild(text);
+      tag.appendChild(btn);
+      box.appendChild(tag);
+    });
+  }
+
+  function renderSkills() {
+    renderSkillList('hardSkillsList', profile.hard_skills || [], x => x.name || '');
+    renderSkillList('softSkillsList', profile.soft_skills || [], x => x.name || '');
+    renderSkillList('languagesList', profile.languages || [], x => x.level ? `${x.name} (${x.level})` : x.name);
+  }
+
+  async function addSkill(listName) {
+    const inputId = listName === 'hard_skills' ? 'hardSkillInput' : 'softSkillInput';
+    const input = document.getElementById(inputId);
+    const name = (input.value || '').trim();
+    if (!name) return;
+
+    const res = await fetch(`/profile/list/${listName}`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ name })
+    });
+    const item = await res.json();
+    if (item.error) return alert(item.error);
+
+    profile[listName] = [...(profile[listName] || []), item];
+    input.value = '';
+    renderSkills();
+  }
+
+  async function addLanguage() {
+    const nameInput = document.getElementById('languageInput');
+    const levelInput = document.getElementById('languageLevelInput');
+    const name = (nameInput.value || '').trim();
+    const level = (levelInput.value || '').trim();
+    if (!name) return;
+
+    const res = await fetch('/profile/list/languages', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ name, level })
+    });
+    const item = await res.json();
+    if (item.error) return alert(item.error);
+
+    profile.languages = [...(profile.languages || []), item];
+    nameInput.value = '';
+    levelInput.value = '';
+    renderSkills();
+  }
+
+  async function deleteSkillItem(containerId, itemId) {
+    let listName = 'hard_skills';
+    if (containerId === 'softSkillsList') listName = 'soft_skills';
+    if (containerId === 'languagesList') listName = 'languages';
+
+    const res = await fetch(`/profile/list/${listName}/${itemId}`, { method: 'DELETE' });
+    const data = await res.json();
+    if (data.error) return alert(data.error);
+
+    profile[listName] = (profile[listName] || []).filter(x => x.id !== itemId);
+    renderSkills();
+  }
+
+  document.getElementById('job_posting').addEventListener('keydown', e => {
+    if(e.ctrlKey && e.key==='Enter') generate();
+  });
+
+  // ── Chat ──
+  let chatHistory = [];
+
+  function autoResize(el) {
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+  }
+
+  function chatKeydown(e) {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); }
+  }
+
+  function sendSuggestion(el) {
+    document.getElementById('chatInput').value = el.textContent;
+    sendChat();
+  }
+
+  function renderMarkdown(text) {
+    return text
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/\*\*\*(.+?)\*\*\*/g,'<strong><em>$1</em></strong>')
+      .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+      .replace(/\*(.+?)\*/g,'<em>$1</em>')
+      .replace(/^### (.+)$/gm,'<strong>$1</strong>')
+      .replace(/^## (.+)$/gm,'<strong>$1</strong>')
+      .replace(/^# (.+)$/gm,'<strong>$1</strong>')
+      .replace(/^[-•] (.+)$/gm,'<li>$1</li>')
+      .replace(/(<li>.*<\/li>)/gs, s => '<ul>' + s + '</ul>')
+      .replace(/\n\n+/g,'</p><p>')
+      .replace(/\n/g,'<br>')
+      .replace(/^(.)/,'<p>$1').replace(/(.)$/,'$1</p>');
+  }
+
+  function addMessage(role, text) {
+    const empty = document.getElementById('chatEmpty');
+    if (empty) empty.remove();
+
+    const msgs = document.getElementById('chatMessages');
+    const now = new Date().toLocaleTimeString('de-DE', {hour:'2-digit', minute:'2-digit'});
+
+    const div = document.createElement('div');
+    div.className = `chat-msg ${role}`;
+
+    if (role === 'assistant') {
+      div.innerHTML = `<div class="chat-bubble">${renderMarkdown(text)}</div><div class="chat-meta">${now}</div>`;
+    } else {
+      const escaped = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      div.innerHTML = `<div class="chat-bubble">${escaped}</div><div class="chat-meta">${now}</div>`;
+    }
+
+    msgs.appendChild(div);
+    msgs.scrollTop = msgs.scrollHeight;
+    return div;
+  }
+
+  function addTyping() {
+    const empty = document.getElementById('chatEmpty');
+    if (empty) empty.remove();
+
+    const msgs = document.getElementById('chatMessages');
+    const div = document.createElement('div');
+    div.className = 'chat-msg chat-typing'; div.id = 'typingIndicator';
+    div.innerHTML = '<div class="chat-bubble"><div class="dots"><span></span><span></span><span></span></div></div>';
+    msgs.appendChild(div);
+    msgs.scrollTop = msgs.scrollHeight;
+  }
+
+  function removeTyping() {
+    const el = document.getElementById('typingIndicator');
+    if (el) el.remove();
+  }
+
+  async function sendChat() {
+    const input = document.getElementById('chatInput');
+    const message = input.value.trim();
+    if (!message) return;
+
+    input.value = ''; input.style.height = 'auto';
+    document.getElementById('chatSendBtn').disabled = true;
+
+    addMessage('user', message);
+    addTyping();
+
+    const payload = {
+      message,
+      history: chatHistory,
+      cv_html:          generatedDocs['cv']          || '',
+      anschreiben_html: generatedDocs['anschreiben'] || '',
+      job_posting:      document.getElementById('job_posting').value ||
+                        document.getElementById('job_posting_url').value || '',
+    };
+
+    try {
+      const res  = await fetch('/chat', {
+        method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)
+      });
+      const data = await res.json();
+      removeTyping();
+
+      const reply = data.error ? `Fehler: ${data.error}` : data.reply;
+      addMessage('assistant', reply);
+
+      chatHistory.push({role:'user', text: message});
+      chatHistory.push({role:'assistant', text: reply});
+      if (chatHistory.length > 20) chatHistory = chatHistory.slice(-20);
+    } catch(e) {
+      removeTyping();
+      addMessage('assistant', 'Verbindungsfehler: ' + e.message);
+    } finally {
+      document.getElementById('chatSendBtn').disabled = false;
+      document.getElementById('chatInput').focus();
+    }
+  }
+
+  init();
+</script>
+</body>
+</html>

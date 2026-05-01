@@ -1,0 +1,1031 @@
+import os
+import json
+import uuid
+import re
+import requests as http_requests
+from bs4 import BeautifulSoup
+from flask import Flask, render_template, request, jsonify
+from google import genai
+from google.genai import types
+from dotenv import load_dotenv
+from datetime import date
+
+from cv_layouts import ANSCHREIBEN_HTML_STYLE, LAYOUTS
+from personal_config import get_candidate_base, get_contact, sender_address_html
+
+load_dotenv()
+
+app = Flask(__name__)
+
+GEMINI_MODEL      = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+PROJECTS_FILE     = os.path.join(os.path.dirname(__file__), "data", "projects.json")
+PROFILE_FILE      = os.path.join(os.path.dirname(__file__), "data", "profile.json")
+CV_DIR            = os.path.join(os.path.dirname(__file__), "cvs")
+ANSCHREIBEN_DIR   = os.path.join(os.path.dirname(__file__), "anschreiben")
+os.makedirs(CV_DIR, exist_ok=True)
+os.makedirs(ANSCHREIBEN_DIR, exist_ok=True)
+
+
+# ─── Helpers ─────────────────────────────────────────────────────────────────
+
+def load_projects() -> list:
+    try:
+        with open(PROJECTS_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return []
+
+
+def save_projects(projects: list):
+    with open(PROJECTS_FILE, "w", encoding="utf-8") as f:
+        json.dump(projects, f, ensure_ascii=False, indent=2)
+
+
+def load_profile() -> dict:
+    defaults = {
+        "experience": [],
+        "education": [],
+        "hard_skills": [],
+        "soft_skills": [],
+        "languages": [],
+    }
+    try:
+        with open(PROFILE_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+            for key, default_val in defaults.items():
+                if key not in data or not isinstance(data[key], list):
+                    data[key] = default_val.copy()
+            return data
+    except (FileNotFoundError, json.JSONDecodeError):
+        return defaults
+
+
+def save_profile(profile: dict):
+    with open(PROFILE_FILE, "w", encoding="utf-8") as f:
+        json.dump(profile, f, ensure_ascii=False, indent=2)
+
+
+def _sort_key(entry: dict) -> str:
+    """Sort descending: current first, then by end date, then by start date."""
+    if entry.get("current"):
+        return "9999-99"
+    return entry.get("end") or entry.get("start") or "0000-00"
+
+
+def fmt_date(ym: str | None, current: bool = False, language: str = "de") -> str:
+    if current:
+        return "present" if language == "en" else "heute"
+    if not ym:
+        return ""
+    months_de = ["", "Jan", "Feb", "Mrz", "Apr", "Mai", "Jun",
+                 "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"]
+    months_en = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                 "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+    months = months_en if language == "en" else months_de
+    try:
+        y, m = ym.split("-")
+        return f"{months[int(m)]} {y}"
+    except Exception:
+        return ym
+
+
+def profile_to_text(profile: dict) -> str:
+    lines = [get_candidate_base()]
+
+    # Experience — sorted chronologically descending
+    exp = [e for e in profile.get("experience", []) if e.get("visible", True)]
+    exp.sort(key=_sort_key, reverse=True)
+    if exp:
+        lines.append("--- WORK EXPERIENCE ---\n")
+        for e in exp:
+            loc    = f", {e['location']}" if e.get("location") else ""
+            start  = fmt_date(e.get("start"))
+            end    = fmt_date(e.get("end"), e.get("current", False))
+            period = f"{start} – {end}" if start else ""
+            lines.append(f"{e['title']}")
+            lines.append(f"{e['company']}{loc} · {period}")
+            for b in e.get("bullets", []):
+                lines.append(f"- {b}")
+            lines.append("")
+
+    # Education — sorted descending
+    edu = [e for e in profile.get("education", []) if e.get("visible", True)]
+    edu.sort(key=_sort_key, reverse=True)
+    if edu:
+        lines.append("--- EDUCATION ---\n")
+        for e in edu:
+            loc    = f", {e['location']}" if e.get("location") else ""
+            start  = fmt_date(e.get("start"))
+            end    = fmt_date(e.get("end"), e.get("current", False))
+            period = f"{start} – {end}" if start else ""
+            lines.append(f"{e['degree']}")
+            lines.append(f"{e['institution']}{loc} · {period}")
+            for d in e.get("details", []):
+                lines.append(f"- {d}")
+            lines.append("")
+
+    hard = [s.get("name", "").strip() for s in profile.get("hard_skills", []) if s.get("name")]
+    soft = [s.get("name", "").strip() for s in profile.get("soft_skills", []) if s.get("name")]
+    langs = []
+    for l in profile.get("languages", []):
+        name = (l.get("name") or "").strip()
+        level = (l.get("level") or "").strip()
+        if name:
+            langs.append(f"{name} ({level})" if level else name)
+
+    if hard or soft or langs:
+        lines.append("--- SKILLS ---\n")
+        if hard:
+            lines.append(f"Hard Skills: {', '.join(hard)}")
+        if soft:
+            lines.append(f"Soft Skills: {', '.join(soft)}")
+        if langs:
+            lines.append(f"Languages: {', '.join(langs)}")
+        lines.append("")
+
+    return "\n".join(lines)
+
+
+def projects_to_text(projects: list) -> str:
+    visible = [p for p in projects if p.get("visible", True)]
+    if not visible:
+        return "(keine Projekte vorhanden)"
+    lines = []
+    for p in visible:
+        grade_str = f" (Note: {p['grade']})" if p.get("grade") else ""
+        tags_str  = f" [Tags: {', '.join(p['tags'])}]" if p.get("tags") else ""
+        lines.append(f"- {p['title']}{grade_str}{tags_str}:\n  {p['description']}")
+    return "\n".join(lines)
+
+
+def strip_code_fence(text: str) -> str:
+    import re
+    text = text.strip()
+    if text.startswith("```"):
+        text = text.split("```", 2)[1]
+        if text.startswith("html"):
+            text = text[4:]
+        text = text.rsplit("```", 1)[0]
+    # Convert leftover markdown bold/italic to HTML tags
+    text = re.sub(r'\*\*\*(.+?)\*\*\*', r'<strong><em>\1</em></strong>', text)
+    text = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', text)
+    text = re.sub(r'\*(.+?)\*', r'<em>\1</em>', text)
+    return text.strip()
+
+
+def call_gemini(prompt: str, max_tokens: int = 8192) -> str:
+    client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
+    response = client.models.generate_content(
+        model=GEMINI_MODEL,
+        contents=prompt,
+        config=types.GenerateContentConfig(
+            temperature=0.7,
+            max_output_tokens=max_tokens,
+            thinking_config=types.ThinkingConfig(thinking_budget=0),
+        ),
+    )
+    return strip_code_fence(response.text)
+
+
+# ─── Generation ──────────────────────────────────────────────────────────────
+
+def pick_layout(job_posting: str, company: str, position: str, requested_layout: str) -> str:
+    if requested_layout in LAYOUTS:
+        return requested_layout
+    if requested_layout != "auto":
+        return "modern"
+    text = f"{job_posting} {company} {position}".lower()
+    classic_kw = ["consult","berater","finance","bank","audit","legal","jur","public sector","behörde","verwaltung","compliance","risk","steuer","versicherung"]
+    sidebar_kw = ["design","ux","ui","creative","marketing","brand","content","product manager","produktmanager","startup","innovation","growth"]
+    if any(k in text for k in classic_kw):
+        return "classic"
+    if any(k in text for k in sidebar_kw):
+        return "sidebar"
+    return "modern"
+
+
+def _call_gemini_json(prompt: str, max_tokens: int = 4096) -> dict:
+    client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
+    response = client.models.generate_content(
+        model=GEMINI_MODEL,
+        contents=prompt,
+        config=types.GenerateContentConfig(
+            temperature=0.7,
+            max_output_tokens=max_tokens,
+            response_mime_type="application/json",
+            thinking_config=types.ThinkingConfig(thinking_budget=0),
+        ),
+    )
+    return json.loads(response.text)
+
+
+def generate_cv_content(
+    job_posting: str, company: str, position: str,
+    language: str, custom_notes: str, projects: list
+) -> dict:
+    lang = "auf Deutsch" if language == "de" else "in English"
+    projects_text = projects_to_text(projects)
+    notes_block = f"\nEIGENE HINWEISE (unbedingt berücksichtigen):\n{custom_notes}\n" if custom_notes.strip() else ""
+    profile_text = profile_to_text(load_profile())
+    profile = load_profile()
+
+    exp = [e for e in profile.get("experience", []) if e.get("visible", True)]
+    exp.sort(key=_sort_key, reverse=True)
+    edu = [e for e in profile.get("education", []) if e.get("visible", True)]
+    edu.sort(key=_sort_key, reverse=True)
+    visible_projects = [p for p in projects if p.get("visible", True)]
+
+    exp_ids  = [e["id"] for e in exp if e.get("id")]
+    edu_ids  = [e["id"] for e in edu if e.get("id")]
+    proj_ids = [p["id"] for p in visible_projects if p.get("id")]
+
+    applicant = get_contact()["full_name"]
+    prompt = f"""Du bist ein professioneller CV-Verfasser. Erstelle strukturierten Inhalt {lang} für den Lebenslauf von {applicant}.
+
+PROFIL DES BEWERBERS:
+{profile_text}
+
+PROJEKTE & ERFOLGE:
+{projects_text}
+{notes_block}
+STELLENAUSSCHREIBUNG:
+{job_posting}
+
+UNTERNEHMEN: {company or "aus Stellenausschreibung entnehmen"}
+POSITION: {position or "aus Stellenausschreibung entnehmen"}
+
+Gib ein JSON-Objekt zurück mit exakt dieser Struktur:
+{{
+  "profile": "2-3 sentence profile statement tailored to this position",
+  "experience": [
+    {{
+      "id": "original ID from profile",
+      "title": "job title{' translated to English' if language == 'en' else ' auf Deutsch'}",
+      "bullets": ["bullet 1 tailored to position", "bullet 2"]
+    }}
+  ],
+  "education": [
+    {{
+      "id": "original ID from profile",
+      "degree": "degree name{' translated to English' if language == 'en' else ' auf Deutsch'}"
+    }}
+  ],
+  "projects": [
+    {{
+      "id": "project id",
+      "title": "project title{' translated to English' if language == 'en' else ' auf Deutsch'}",
+      "description": "project description{' translated to English' if language == 'en' else ' auf Deutsch'}"
+    }}
+  ],
+  "skills": {{
+    "{'Technical' if language == 'en' else 'Technisch'}": "React, TypeScript, Python, ...",
+    "{'Methods' if language == 'en' else 'Methoden'}": "...",
+    "{'Languages' if language == 'en' else 'Sprachen'}": "{'German (Native), English (C1)' if language == 'en' else 'Deutsch (Muttersprache), Englisch (C1)'}"
+  }}
+}}
+
+Regeln:
+- Verwende NUR diese Experience-IDs: {exp_ids}
+- Verwende NUR diese Education-IDs: {edu_ids}
+- Verwende NUR diese Project-IDs: {proj_ids}
+- Wähle die 3-4 relevantesten Projekte
+- {"Übersetze alle Titel, Abschlüsse, Skill-Kategorien und Projektbeschreibungen ins Englische" if language == 'en' else "Alles auf Deutsch"}
+- Bullet Points: NUR konkrete Tätigkeiten und Ergebnisse, KEIN "– was meine XY-Skills beweist/zeigt/unterstreicht"
+- Keine Wiederholungen von Informationen die bereits anderswo stehen
+- Erfinde keine Fakten
+"""
+    return _call_gemini_json(prompt, 4096)
+
+
+def generate_anschreiben_content(
+    job_posting: str, company: str, position: str,
+    contact: str, city: str, language: str,
+    custom_notes: str, projects: list,
+    company_address: str = ""
+) -> dict:
+    lang = "auf Deutsch" if language == "de" else "in English"
+    today = date.today().strftime("%d. %B %Y") if language == "de" else date.today().strftime("%B %d, %Y")
+    projects_text = projects_to_text(projects)
+    notes_block = f"\nEIGENE HINWEISE (unbedingt einarbeiten):\n{custom_notes}\n" if custom_notes.strip() else ""
+    profile_text = profile_to_text(load_profile())
+
+    applicant = get_contact()["full_name"]
+    prompt = f"""Du bist ein professioneller Bewerbungsschreiber. Erstelle strukturierten Inhalt {lang} für das Anschreiben von {applicant}.
+
+PROFIL DES BEWERBERS:
+{profile_text}
+
+PROJEKTE & ERFOLGE:
+{projects_text}
+{notes_block}
+STELLENAUSSCHREIBUNG:
+{job_posting}
+
+UNTERNEHMEN: {company or "aus Stellenausschreibung entnehmen"}
+POSITION: {position or "aus Stellenausschreibung entnehmen"}
+ANREDE: {contact}
+ORT: {city or "Berlin"}
+DATUM: {today}
+
+STIL: Direkt einsteigen, kein "hiermit bewerbe ich mich". Konkrete Beispiele, keine Floskeln. 4-6 kompakte Absätze.
+
+Gib ein JSON-Objekt zurück mit exakt dieser Struktur:
+{{
+  "company_name": "Firmenname",
+  "company_address": "{company_address if company_address else 'Adresse falls bekannt, sonst leer'}",
+  "city_date": "{city or 'Berlin'}, {today}",
+  "subject": "Bewerbung um die Stelle als [POSITION]",
+  "greeting": "{contact},",
+  "paragraphs": [
+    "Absatz 1 Text...",
+    "Absatz 2 Text...",
+    "Absatz 3 Text...",
+    "Abschluss-Absatz..."
+  ]
+}}
+"""
+    return _call_gemini_json(prompt, 3072)
+
+
+# ─── Rendering ───────────────────────────────────────────────────────────────
+
+def _render_jobs(jobs_content: list, profile: dict, layout: str, language: str = "de") -> str:
+    exp_map = {e["id"]: e for e in profile.get("experience", []) if e.get("id")}
+    parts = []
+    for item in jobs_content:
+        entry = exp_map.get(item.get("id"), {})
+        if not entry:
+            continue
+        title    = item.get("title") or entry.get("title", "")
+        company  = entry.get("company", "")
+        location = entry.get("location", "")
+        start    = fmt_date(entry.get("start"), language=language)
+        end      = fmt_date(entry.get("end"), entry.get("current", False), language=language)
+        bullets  = item.get("bullets", entry.get("bullets", []))
+        bl_html  = "".join(f"<li>{b}</li>" for b in bullets)
+
+        if layout == "classic":
+            parts.append(
+                f'<div class="job">'
+                f'<div class="job-date">{start}<br>– {end}</div>'
+                f'<div class="job-content">'
+                f'<div class="job-title">{title}</div>'
+                f'<div class="job-company">{company}{(", " + location) if location else ""}</div>'
+                f'{"<ul>" + bl_html + "</ul>" if bl_html else ""}'
+                f'</div></div>'
+            )
+        else:
+            meta = f"{company}{(', ' + location) if location else ''} · {start} – {end}"
+            parts.append(
+                f'<div class="job">'
+                f'<div class="job-title">{title}</div>'
+                f'<div class="job-meta">{meta}</div>'
+                f'{"<ul>" + bl_html + "</ul>" if bl_html else ""}'
+                f'</div>'
+            )
+    return "\n".join(parts)
+
+
+def _render_education(edu_content: list, profile: dict, layout: str, language: str = "de") -> str:
+    edu_map = {e["id"]: e for e in profile.get("education", []) if e.get("id")}
+    parts = []
+    for item in edu_content:
+        entry = edu_map.get(item.get("id"), {})
+        if not entry:
+            continue
+        degree      = item.get("degree") or entry.get("degree", "")
+        institution = entry.get("institution", "")
+        location    = entry.get("location", "")
+        start       = fmt_date(entry.get("start"), language=language)
+        end         = fmt_date(entry.get("end"), entry.get("current", False), language=language)
+        details     = list(entry.get("details", []))
+        det_html = "".join(f"<li>{d}</li>" for d in details)
+
+        if layout == "sidebar":
+            parts.append(
+                f'<div class="edu-item">'
+                f'<div class="edu-title">{degree}</div>'
+                f'<div class="edu-meta">{institution}{(", " + location) if location else ""} · {start} – {end}</div>'
+                f'</div>'
+            )
+        elif layout == "classic":
+            parts.append(
+                f'<div class="job">'
+                f'<div class="job-date">{start}<br>– {end}</div>'
+                f'<div class="job-content">'
+                f'<div class="job-title">{degree}</div>'
+                f'<div class="job-company">{institution}{(", " + location) if location else ""}</div>'
+                f'{"<ul>" + det_html + "</ul>" if det_html else ""}'
+                f'</div></div>'
+            )
+        else:
+            meta_parts = [institution]
+            if location:
+                meta_parts.append(location)
+            meta_parts.append(f"{start} – {end}")
+            parts.append(
+                f'<div class="job">'
+                f'<div class="job-title">{degree}</div>'
+                f'<div class="job-meta">{" · ".join(meta_parts)}</div>'
+                f'{"<ul>" + det_html + "</ul>" if det_html else ""}'
+                f'</div>'
+            )
+    return "\n".join(parts)
+
+
+def _render_projects(projects_content: list, all_projects: list, language: str = "de") -> str:
+    proj_map = {p["id"]: p for p in all_projects if p.get("id")}
+    grade_label = "Grade" if language == "en" else "Note"
+    items = []
+    for item in projects_content:
+        pid   = item if isinstance(item, str) else item.get("id", "")
+        p     = proj_map.get(pid)
+        if not p:
+            continue
+        title = (item.get("title") if isinstance(item, dict) else None) or p["title"]
+        desc  = (item.get("description") if isinstance(item, dict) else None) or p["description"]
+        grade = f" ({grade_label}: {p['grade']})" if p.get("grade") else ""
+        items.append(f"<li><strong>{title}{grade}</strong>: {desc}</li>")
+    return "\n".join(items)
+
+
+def _render_skills_rows(skills: dict) -> str:
+    return "\n".join(
+        f'<div class="skills-row"><strong>{cat}:</strong><span>{val}</span></div>'
+        for cat, val in skills.items()
+    )
+
+
+def _render_skills_dl(skills: dict) -> str:
+    return "\n".join(f"<dt>{cat}:</dt><dd>{val}</dd>" for cat, val in skills.items())
+
+
+def _render_skills_tags(skills: dict) -> str:
+    all_s: list[str] = []
+    for val in skills.values():
+        all_s.extend(s.strip() for s in re.split(r"[,;·•]", val) if s.strip())
+    return "".join(f'<span class="skill-tag">{s}</span>' for s in all_s[:12])
+
+
+I18N = {
+    "de": {
+        "profile": "Profil", "experience": "Berufserfahrung", "education": "Ausbildung",
+        "projects": "Projekte &amp; Erfolge", "skills": "Fähigkeiten &amp; Kenntnisse",
+        "skills_classic": "Fähigkeiten", "contact": "Kontakt",
+        "core_skills": "Kernkompetenzen", "languages": "Sprachen",
+        "lang_de": "Deutsch – Muttersprache", "lang_en": "Englisch – C1",
+        "signature": "Mit freundlichen Grüßen",
+    },
+    "en": {
+        "profile": "Profile", "experience": "Work Experience", "education": "Education",
+        "projects": "Projects &amp; Achievements", "skills": "Skills &amp; Competencies",
+        "skills_classic": "Skills", "contact": "Contact",
+        "core_skills": "Core Competencies", "languages": "Languages",
+        "lang_de": "German – Native", "lang_en": "English – C1",
+        "signature": "Yours sincerely",
+    },
+}
+
+
+def render_cv_html(content: dict, layout: str, language: str, all_projects: list) -> str:
+    profile   = load_profile()
+    ldef      = LAYOUTS.get(layout, LAYOUTS["modern"])
+    t         = I18N.get(language, I18N["de"])
+    c         = get_contact()
+    jobs_html = _render_jobs(content.get("experience", []), profile, layout, language)
+    edu_html  = _render_education(content.get("education", []), profile, layout, language)
+    proj_html = _render_projects(content.get("projects", []), all_projects, language)
+    skills    = content.get("skills", {})
+    prof_text = content.get("profile", "")
+
+    if layout == "modern":
+        body = f"""<div class="header">
+  <h1>{c["full_name"]}</h1>
+  <div class="contact">
+    <div class="contact-item"><span>📍</span><span>{c["address_dot"]}</span></div>
+    <div class="contact-item"><span>📞</span><span>{c["phone"]}</span></div>
+    <div class="contact-item"><span>✉️</span><a href="mailto:{c["email"]}">{c["email"]}</a></div>
+  </div>
+</div>
+<div class="section"><h2>{t['profile']}</h2><p>{prof_text}</p></div>
+<div class="section"><h2>{t['experience']}</h2>{jobs_html}</div>
+<div class="section"><h2>{t['education']}</h2>{edu_html}</div>
+<div class="section"><h2>{t['projects']}</h2><ul>{proj_html}</ul></div>
+<div class="section"><h2>{t['skills']}</h2>{_render_skills_rows(skills)}</div>"""
+
+    elif layout == "sidebar":
+        all_edu = [e for e in profile.get("education", []) if e.get("visible", True)]
+        all_edu.sort(key=_sort_key, reverse=True)
+        edu_sidebar = _render_education([{"id": e["id"]} for e in all_edu], profile, "sidebar", language)
+        body = f"""<div class="page">
+  <div class="sidebar">
+    <h1>{c["full_name"]}</h1>
+    <h2>{t['contact']}</h2>
+    <div class="contact-item"><span>📍</span><span>{c["address_sidebar_html"]}</span></div>
+    <div class="contact-item"><span>📞</span><span>{c["phone"]}</span></div>
+    <div class="contact-item"><span>✉️</span><a href="mailto:{c["email"]}">{c["email"]}</a></div>
+    <h2>{t['core_skills']}</h2>
+    {_render_skills_tags(skills)}
+    <h2>{t['languages']}</h2>
+    <p>{t['lang_de']}</p><p>{t['lang_en']}</p>
+    <h2>{t['education']}</h2>
+    {edu_sidebar}
+  </div>
+  <div class="main">
+    <h2>{t['profile']}</h2>
+    <p>{prof_text}</p>
+    <h2>{t['experience']}</h2>
+    {jobs_html}
+    <h2>{t['projects']}</h2>
+    <ul>{proj_html}</ul>
+  </div>
+</div>"""
+
+    else:  # classic
+        body = f"""<div class="header">
+  <h1>{c["full_name"]}</h1>
+  <div class="header-sub">
+    <span>{c["address_dot"]}</span>
+    <span>{c["phone"]}</span>
+    <span><a href="mailto:{c["email"]}">{c["email"]}</a></span>
+  </div>
+</div>
+<h2>{t['profile']}</h2>
+<p>{prof_text}</p>
+<h2>{t['experience']}</h2>
+{jobs_html}
+<h2>{t['education']}</h2>
+{edu_html}
+<h2>{t['projects']}</h2>
+<ul>{proj_html}</ul>
+<h2>{t['skills_classic']}</h2>
+<dl class="skills-block">{_render_skills_dl(skills)}</dl>"""
+
+    return f"""<!DOCTYPE html>
+<html lang="{language}">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>{c["full_name"]} - Lebenslauf</title>
+{ldef['style']}
+</head>
+<body>
+{body}
+</body>
+</html>"""
+
+
+def render_anschreiben_html(content: dict, language: str) -> str:
+    company_name    = content.get("company_name", "")
+    company_address = content.get("company_address", "")
+    city_date       = content.get("city_date", "")
+    subject         = content.get("subject", "")
+    greeting        = content.get("greeting", "Sehr geehrte Damen und Herren,")
+    paragraphs      = content.get("paragraphs", [])
+    signer          = get_contact()["full_name"]
+
+    company_block = f"<strong>{company_name}</strong>"
+    if company_address:
+        company_block += "<br/>" + company_address.replace("\n", "<br/>")
+
+    paras_html = "\n".join(f"<p>{p}</p>" for p in paragraphs)
+
+    return f"""<!DOCTYPE html>
+<html lang="{language}">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>{signer} - Anschreiben</title>
+{ANSCHREIBEN_HTML_STYLE}
+</head>
+<body>
+<div class="content-box">
+  <div class="address-row">
+    <div class="recipient-address">{company_block}</div>
+    <div class="sender-address">{sender_address_html()}</div>
+  </div>
+  <p class="date-line">{city_date}</p>
+</div>
+<div class="content-box">
+  <p class="subject-line">{subject}</p>
+  <p><strong>{greeting}</strong></p>
+  {paras_html}
+  <p class="signature">{I18N.get(language, I18N["de"])["signature"]}<br>{signer}</p>
+</div>
+</body>
+</html>"""
+
+
+# ─── Routes ──────────────────────────────────────────────────────────────────
+
+@app.route("/")
+def index():
+    return render_template("index.html")
+
+
+@app.route("/fetch-job", methods=["POST"])
+def fetch_job():
+    url = request.json.get("url", "").strip()
+    if not url:
+        return jsonify({"error": "Keine URL angegeben."}), 400
+    try:
+        resp = http_requests.get(url, timeout=10, headers={
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/120 Safari/537.36"
+        })
+        resp.raise_for_status()
+        soup = BeautifulSoup(resp.text, "html.parser")
+        for tag in soup(["script", "style", "nav", "header", "footer", "aside", "form"]):
+            tag.decompose()
+        text = soup.get_text(separator="\n", strip=True)
+        lines = [l.strip() for l in text.splitlines() if l.strip()]
+        cleaned = "\n".join(lines)
+        if len(cleaned) > 12000:
+            cleaned = cleaned[:12000] + "\n[...]"
+        return jsonify({"text": cleaned})
+    except Exception as e:
+        return jsonify({"error": f"Konnte URL nicht laden: {str(e)}"}), 500
+
+
+@app.route("/layouts", methods=["GET"])
+def get_layouts():
+    return jsonify([{"id": k, "name": v["name"], "style": v["style"]} for k, v in LAYOUTS.items()])
+
+
+@app.route("/test-connection", methods=["GET"])
+def test_connection():
+    api_key = os.environ.get("GEMINI_API_KEY", "")
+    if not api_key:
+        return jsonify({"ok": False, "error": "GEMINI_API_KEY nicht gesetzt"}), 500
+    try:
+        client = genai.Client(api_key=api_key)
+        response = client.models.generate_content(
+            model=GEMINI_MODEL,
+            contents="Say: OK",
+            config=types.GenerateContentConfig(
+                max_output_tokens=10,
+                thinking_config=types.ThinkingConfig(thinking_budget=0),
+            ),
+        )
+        return jsonify({"ok": True, "model": GEMINI_MODEL, "response": response.text.strip()})
+    except Exception as e:
+        return jsonify({"ok": False, "model": GEMINI_MODEL, "error": str(e)}), 500
+
+
+@app.route("/generate", methods=["POST"])
+def generate():
+    if not os.environ.get("GEMINI_API_KEY"):
+        return jsonify({"error": "GEMINI_API_KEY nicht gesetzt. Prüfe deine .env Datei."}), 500
+
+    data         = request.json
+    job_posting  = data.get("job_posting", "").strip()
+    if not job_posting:
+        return jsonify({"error": "Bitte Stellenausschreibung einfügen."}), 400
+
+    company         = data.get("company", "").strip()
+    position        = data.get("position", "").strip()
+    contact         = data.get("contact", "Sehr geehrte Damen und Herren").strip()
+    city            = data.get("city", "Berlin").strip()
+    language        = data.get("language", "de")
+    doc_type        = data.get("doc_type", "both")
+    custom_notes    = data.get("custom_notes", "").strip()
+    layout          = data.get("layout", "modern")
+    company_address = data.get("company_address", "").strip()
+    resolved_layout = pick_layout(job_posting, company, position, layout)
+
+    projects = load_projects()
+    result   = {"layout_used": resolved_layout}
+
+    try:
+        if doc_type in ("cv", "both"):
+            result["cv_content"] = generate_cv_content(
+                job_posting, company, position, language, custom_notes, projects
+            )
+        if doc_type in ("anschreiben", "both"):
+            result["anschreiben_content"] = generate_anschreiben_content(
+                job_posting, company, position, contact, city, language, custom_notes, projects,
+                company_address=company_address
+            )
+    except Exception as e:
+        return jsonify({"error": f"Gemini-Fehler: {str(e)}"}), 500
+
+    return jsonify(result)
+
+
+@app.route("/render", methods=["POST"])
+def render_doc():
+    data     = request.json
+    doc_type = data.get("doc_type", "cv")
+    language = data.get("language", "de")
+    projects = load_projects()
+
+    try:
+        if doc_type == "cv":
+            html = render_cv_html(data.get("content", {}), data.get("layout", "modern"), language, projects)
+        elif doc_type == "anschreiben":
+            html = render_anschreiben_html(data.get("content", {}), language)
+        else:
+            return jsonify({"error": "Unbekannter doc_type"}), 400
+    except Exception as e:
+        return jsonify({"error": f"Render-Fehler: {str(e)}"}), 500
+
+    return jsonify({"html": html})
+
+
+@app.route("/save", methods=["POST"])
+def save_doc():
+    data     = request.json
+    doc_type = data.get("doc_type", "cv")
+    filename = data.get("filename", "document.html")
+    html     = data.get("html", "")
+
+    if not html:
+        return jsonify({"error": "Kein Inhalt."}), 400
+
+    # Sanitise filename — keep only safe chars
+    safe = re.sub(r'[^\w\-_\.]', '_', filename)
+    if not safe.endswith(".html"):
+        safe = safe.rsplit(".", 1)[0] + ".html"
+
+    folder = ANSCHREIBEN_DIR if doc_type == "anschreiben" else CV_DIR
+    path   = os.path.join(folder, safe)
+
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(html)
+
+    return jsonify({"ok": True, "path": path, "filename": safe})
+
+
+@app.route("/extract-fields", methods=["POST"])
+def extract_fields():
+    if not os.environ.get("GEMINI_API_KEY"):
+        return jsonify({"error": "GEMINI_API_KEY nicht gesetzt."}), 500
+    data        = request.json
+    job_posting = (data.get("job_posting") or "").strip()
+    if not job_posting:
+        return jsonify({"error": "Kein Text angegeben."}), 400
+
+    prompt = f"""Extrahiere folgende Informationen aus dieser Stellenausschreibung. Falls eine Information nicht vorhanden ist, gib null zurück.
+
+STELLENAUSSCHREIBUNG:
+{job_posting[:6000]}
+
+Gib ein JSON-Objekt zurück:
+{{
+  "company": "Firmenname oder null",
+  "position": "Genaue Stellenbezeichnung oder null",
+  "contact": "Persönliche Anrede falls Name bekannt z.B. 'Sehr geehrte Frau Müller', sonst 'Sehr geehrte Damen und Herren'",
+  "city": "Stadt des Unternehmensstandorts oder null",
+  "company_address": "Vollständige Postanschrift mit Straße, PLZ und Stadt — nur wenn explizit in der Ausschreibung genannt, sonst null"
+}}
+"""
+    try:
+        result = _call_gemini_json(prompt, 512)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": f"Fehler: {str(e)}"}), 500
+
+
+@app.route("/improve-text", methods=["POST"])
+def improve_text():
+    if not os.environ.get("GEMINI_API_KEY"):
+        return jsonify({"error": "GEMINI_API_KEY nicht gesetzt."}), 500
+    data        = request.json
+    text        = (data.get("text") or "").strip()
+    instruction = (data.get("instruction") or "").strip()
+    if not text or not instruction:
+        return jsonify({"error": "Text und Anweisung erforderlich."}), 400
+
+    prompt = f"""Du bist ein professioneller Bewerbungsschreiber. Überarbeite den folgenden Absatz eines Anschreibens basierend auf der Anweisung.
+
+ORIGINAL-ABSATZ:
+{text}
+
+ANWEISUNG:
+{instruction}
+
+Regeln:
+- Gib NUR den überarbeiteten Absatz zurück, ohne Erklärungen oder Anführungszeichen
+- Behalte Stil und Länge ähnlich, außer die Anweisung sagt etwas anderes
+- Keine neuen Fakten erfinden
+"""
+    try:
+        result = call_gemini(prompt, 1024)
+        return jsonify({"text": result})
+    except Exception as e:
+        return jsonify({"error": f"Gemini-Fehler: {str(e)}"}), 500
+
+
+@app.route("/chat", methods=["POST"])
+def chat():
+    if not os.environ.get("GEMINI_API_KEY"):
+        return jsonify({"error": "GEMINI_API_KEY nicht gesetzt."}), 500
+
+    data         = request.json
+    message      = data.get("message", "").strip()
+    history      = data.get("history", [])   # [{role, text}, ...]
+    cv_html      = data.get("cv_html", "")
+    anschreiben  = data.get("anschreiben_html", "")
+    job_posting  = data.get("job_posting", "")
+
+    if not message:
+        return jsonify({"error": "Keine Nachricht."}), 400
+
+    from bs4 import BeautifulSoup
+
+    def html_to_text(html):
+        if not html:
+            return ""
+        return BeautifulSoup(html, "html.parser").get_text(separator="\n", strip=True)
+
+    cv_text          = html_to_text(cv_html)
+    anschreiben_text = html_to_text(anschreiben)
+
+    context_parts = [f"Du bist ein erfahrener HR-Berater und Bewerbungscoach für {get_contact()['full_name']}."]
+    if job_posting:
+        context_parts.append(f"STELLENAUSSCHREIBUNG:\n{job_posting[:3000]}")
+    if cv_text:
+        context_parts.append(f"AKTUELLER LEBENSLAUF (Text):\n{cv_text[:3000]}")
+    if anschreiben_text:
+        context_parts.append(f"AKTUELLES ANSCHREIBEN (Text):\n{anschreiben_text[:2000]}")
+    context_parts.append(
+        "Beantworte Fragen präzise und konkret. Gib bei Verbesserungsvorschlägen immer "
+        "spezifische Beispiele. Antworte auf Deutsch außer der Nutzer schreibt Englisch. "
+        "Nutze Markdown für Formatierung (Listen, Fett) – das wird im Chat gerendert."
+    )
+    system_prompt = "\n\n".join(context_parts)
+
+    # Build contents list: system + history + new message
+    contents = [{"role": "user", "parts": [{"text": system_prompt + "\n\nVerstanden? Dann warte auf die erste Frage."}]},
+                {"role": "model", "parts": [{"text": "Verstanden! Ich habe den Kontext gelesen und helfe dir gerne mit konkreten Verbesserungsvorschlägen."}]}]
+
+    for h in history:
+        role = "user" if h["role"] == "user" else "model"
+        contents.append({"role": role, "parts": [{"text": h["text"]}]})
+
+    contents.append({"role": "user", "parts": [{"text": message}]})
+
+    try:
+        client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
+        response = client.models.generate_content(
+            model=GEMINI_MODEL,
+            contents=contents,
+            config=types.GenerateContentConfig(
+                temperature=0.7,
+                max_output_tokens=2048,
+                thinking_config=types.ThinkingConfig(thinking_budget=0),
+            ),
+        )
+        return jsonify({"reply": response.text.strip()})
+    except Exception as e:
+        return jsonify({"error": f"Gemini-Fehler: {str(e)}"}), 500
+
+
+@app.route("/profile", methods=["GET"])
+def get_profile():
+    return jsonify(load_profile())
+
+
+@app.route("/profile/<section>", methods=["POST"])
+def add_profile_entry(section):
+    if section not in ("experience", "education"):
+        return jsonify({"error": "Ungültiger Bereich."}), 400
+    data    = request.json
+    profile = load_profile()
+    entry   = {**data, "id": data.get("id") or str(uuid.uuid4())[:8]}
+    profile[section].append(entry)
+    save_profile(profile)
+    return jsonify(entry), 201
+
+
+@app.route("/profile/<section>/<entry_id>", methods=["PUT"])
+def update_profile_entry(section, entry_id):
+    if section not in ("experience", "education"):
+        return jsonify({"error": "Ungültiger Bereich."}), 400
+    data    = request.json
+    profile = load_profile()
+    for e in profile[section]:
+        if e["id"] == entry_id:
+            e.update({k: v for k, v in data.items() if k != "id"})
+            save_profile(profile)
+            return jsonify(e)
+    return jsonify({"error": "Eintrag nicht gefunden."}), 404
+
+
+@app.route("/profile/<section>/<entry_id>", methods=["DELETE"])
+def delete_profile_entry(section, entry_id):
+    if section not in ("experience", "education"):
+        return jsonify({"error": "Ungültiger Bereich."}), 400
+    profile  = load_profile()
+    original = len(profile[section])
+    profile[section] = [e for e in profile[section] if e["id"] != entry_id]
+    if len(profile[section]) == original:
+        return jsonify({"error": "Eintrag nicht gefunden."}), 404
+    save_profile(profile)
+    return jsonify({"ok": True})
+
+
+@app.route("/profile/list/<list_name>", methods=["POST"])
+def add_profile_list_item(list_name):
+    if list_name not in ("hard_skills", "soft_skills", "languages"):
+        return jsonify({"error": "Ungültige Liste."}), 400
+    data = request.json or {}
+    name = (data.get("name") or "").strip()
+    if not name:
+        return jsonify({"error": "Name ist Pflicht."}), 400
+
+    profile = load_profile()
+    item = {
+        "id": data.get("id") or str(uuid.uuid4())[:8],
+        "name": name,
+    }
+    if list_name == "languages":
+        item["level"] = (data.get("level") or "").strip()
+
+    profile[list_name].append(item)
+    save_profile(profile)
+    return jsonify(item), 201
+
+
+@app.route("/profile/list/<list_name>/<item_id>", methods=["PUT"])
+def update_profile_list_item(list_name, item_id):
+    if list_name not in ("hard_skills", "soft_skills", "languages"):
+        return jsonify({"error": "Ungültige Liste."}), 400
+    data = request.json or {}
+    profile = load_profile()
+
+    for item in profile[list_name]:
+        if item["id"] == item_id:
+            if "name" in data:
+                item["name"] = (data.get("name") or "").strip()
+            if list_name == "languages" and "level" in data:
+                item["level"] = (data.get("level") or "").strip()
+            save_profile(profile)
+            return jsonify(item)
+    return jsonify({"error": "Eintrag nicht gefunden."}), 404
+
+
+@app.route("/profile/list/<list_name>/<item_id>", methods=["DELETE"])
+def delete_profile_list_item(list_name, item_id):
+    if list_name not in ("hard_skills", "soft_skills", "languages"):
+        return jsonify({"error": "Ungültige Liste."}), 400
+    profile = load_profile()
+    original = len(profile[list_name])
+    profile[list_name] = [i for i in profile[list_name] if i["id"] != item_id]
+    if len(profile[list_name]) == original:
+        return jsonify({"error": "Eintrag nicht gefunden."}), 404
+    save_profile(profile)
+    return jsonify({"ok": True})
+
+
+@app.route("/projects", methods=["GET"])
+def get_projects():
+    return jsonify(load_projects())
+
+
+@app.route("/projects", methods=["POST"])
+def add_project():
+    data = request.json
+    if not data.get("title") or not data.get("description"):
+        return jsonify({"error": "Titel und Beschreibung sind Pflicht."}), 400
+    project = {
+        "id":          data.get("id") or str(uuid.uuid4())[:8],
+        "title":       data["title"].strip(),
+        "description": data["description"].strip(),
+        "tags":        [t.strip() for t in data.get("tags", []) if t.strip()],
+        "grade":       data.get("grade") or None,
+        "visible":     data.get("visible", True),
+    }
+    projects = load_projects()
+    projects.append(project)
+    save_projects(projects)
+    return jsonify(project), 201
+
+
+@app.route("/projects/<project_id>", methods=["PUT"])
+def update_project(project_id):
+    data = request.json
+    projects = load_projects()
+    for p in projects:
+        if p["id"] == project_id:
+            p["title"]       = data.get("title", p["title"]).strip()
+            p["description"] = data.get("description", p["description"]).strip()
+            p["tags"]        = [t.strip() for t in data.get("tags", p.get("tags", [])) if t.strip()]
+            p["grade"]       = data.get("grade", p.get("grade")) or None
+            p["visible"]     = data.get("visible", p.get("visible", True))
+            save_projects(projects)
+            return jsonify(p)
+    return jsonify({"error": "Projekt nicht gefunden."}), 404
+
+
+@app.route("/projects/<project_id>", methods=["DELETE"])
+def delete_project(project_id):
+    projects = load_projects()
+    new_list = [p for p in projects if p["id"] != project_id]
+    if len(new_list) == len(projects):
+        return jsonify({"error": "Projekt nicht gefunden."}), 404
+    save_projects(new_list)
+    return jsonify({"ok": True})
+
+
+if __name__ == "__main__":
+    app.run(debug=True, port=5050)
