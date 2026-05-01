@@ -2,6 +2,17 @@
 
 Kleine **Flask-Webapp**, mit der du aus Stellenausschreibungen und deinem Profil **Lebenslauf** und **Anschreiben** per Google Gemini generieren und im Browser bearbeiten kannst.
 
+
+
+
+
+https://github.com/user-attachments/assets/0fe6b4d6-bc13-4c82-82d9-9b3360ddd35b
+
+
+
+
+
+
 ## Voraussetzungen
 
 - Python 3.11+ (getestet mit 3.13)
