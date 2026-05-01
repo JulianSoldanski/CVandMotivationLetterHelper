@@ -5,16 +5,7 @@ Kleine **Flask-Webapp**, mit der du aus Stellenausschreibungen und deinem Profil
 
 
 
-
-
-
-
 https://github.com/user-attachments/assets/cadc29bd-8636-4689-8e2c-d4ec5ad4f9a7
-
-
-
-
-
 
 
 
