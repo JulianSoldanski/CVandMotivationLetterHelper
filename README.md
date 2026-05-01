@@ -1,3 +1,4 @@
+
 # CVCreater
 
 Kleine **Flask-Webapp**, mit der du aus Stellenausschreibungen und deinem Profil **Lebenslauf** und **Anschreiben** per Google Gemini generieren und im Browser bearbeiten kannst.
@@ -6,7 +7,13 @@ Kleine **Flask-Webapp**, mit der du aus Stellenausschreibungen und deinem Profil
 
 
 
-https://github.com/user-attachments/assets/0fe6b4d6-bc13-4c82-82d9-9b3360ddd35b
+
+
+https://github.com/user-attachments/assets/cadc29bd-8636-4689-8e2c-d4ec5ad4f9a7
+
+
+
+
 
 
 
