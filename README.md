@@ -48,10 +48,6 @@ python app.py
 
 Im Browser: **http://127.0.0.1:5050**
 
-## Öffentlich auf GitHub
-
-- **Neues Repository** mit frischer Historie: Projekt kopieren, alten Ordner **`.git` löschen**, dann `git init`, Commit, mit einem neuen leeren Repo auf GitHub verbinden und pushen. So verschwinden alte Commits, in denen noch Klartext in `app.py` stand.
-- Niemals committen: **`.env`**, **`config/cv_personal.json`**, sensible Inhalte unter **`data/`**, falls du sie ignorierst.
 
 ## Lizenz
 
