@@ -1871,6 +1871,21 @@
     return s;
   }
 
+  // Like plainJobPostingText, but preserves paragraph structure: only
+  // intra-line whitespace gets collapsed, newlines stay, and runs of 3+
+  // blank lines fold to a single blank line so scraped postings render
+  // with readable structure (rendered via CSS `white-space: pre-wrap`).
+  function prettyJobPostingText(raw) {
+    if (!raw) return '';
+    return String(raw)
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/\r\n?/g, '\n')
+      .replace(/[ \t]+/g, ' ')
+      .replace(/[ \t]*\n[ \t]*/g, '\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+  }
+
   function jobPostingPreview(raw, maxSentences = 3) {
     const plain = plainJobPostingText(raw);
     if (!plain) return { preview: '', hasMore: false };
@@ -2253,7 +2268,7 @@
     const raw = (app.job_posting || '').trim();
     if (!raw) return '';
     const { preview, hasMore } = jobPostingPreview(raw, 3);
-    const full = plainJobPostingText(raw);
+    const full = prettyJobPostingText(raw);
     const suffix = hasMore ? ' …' : '';
     return `
       <details class="job-posting-details">
