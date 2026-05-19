@@ -4,6 +4,8 @@
 .env
 Anschreiben*
 *.pdf
-CV*
-app.cyp*
-db.cpy*
+__pycache__
+CVS/*
+data/*
+cv_personal.json
+.DS_Store
