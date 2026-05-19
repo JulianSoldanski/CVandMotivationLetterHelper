@@ -135,8 +135,8 @@
   .proj-title { font-size:0.8rem; font-weight:600; color:#2c3e50; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .proj-meta { font-size:0.7rem; color:#aaa; margin-top:0.1rem; }
   .proj-actions { display:flex; gap:0.25rem; flex-shrink:0; }
-  .proj-btn { background:none; border:1px solid #e8e8e8; border-radius:4px; padding:0.18rem 0.4rem; font-size:0.72rem; cursor:pointer; color:#888; transition:all .12s; }
-  .proj-btn:hover { background:#f0f0f0; }
+  .proj-btn { background:none; border:1px solid #e8e8e8; border-radius:4px; padding:0.18rem 0.4rem; font-size:0.72rem; cursor:pointer; color:#888; transition:all .12s; line-height:1.2; display:inline-flex; align-items:center; text-decoration:none; }
+  .proj-btn:hover { background:#f0f0f0; color:#888; text-decoration:none; }
   .proj-btn.danger:hover { background:#fff0f0; border-color:#f5c6cb; color:#c0392b; }
   .add-proj-btn { width:100%; padding:0.42rem; border:1.5px dashed #ccc; border-radius:6px; background:none; font-size:0.8rem; color:#aaa; cursor:pointer; transition:all .15s; margin-top:0.2rem; }
   .add-proj-btn:hover { border-color:#4B5D67; color:#4B5D67; background:#f7f9fa; }
@@ -1445,6 +1445,10 @@
     <div class="form-group">
       <label>Note <span class="opt">(opt.)</span></label>
       <input type="text" id="modalProjGrade" placeholder="z.B. 1.0" style="max-width:110px"/>
+    </div>
+    <div class="form-group">
+      <label>Link <span class="opt">(opt. – z.B. GitHub-Repo, Demo, Publikation)</span></label>
+      <input type="url" id="modalProjLink" placeholder="https://github.com/username/repo"/>
     </div>
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeModal()">Abbrechen</button>
@@ -3245,6 +3249,9 @@
     projects.forEach(p => {
       const d = document.createElement('div');
       d.className = 'project-item' + (p.visible ? '' : ' hidden-proj');
+      const linkBtn = p.link
+        ? `<a class="proj-btn" href="${esc(p.link)}" target="_blank" rel="noopener noreferrer" title="${esc(p.link)}">🔗</a>`
+        : '';
       d.innerHTML = `
         <div class="proj-row">
           <div class="proj-main">
@@ -3252,6 +3259,7 @@
             <div class="proj-meta">${(p.tags||[]).join(' · ')}${p.grade ? ' · Note '+p.grade : ''}</div>
           </div>
           <div class="proj-actions">
+            ${linkBtn}
             <button class="proj-btn" title="${p.visible?'Ausblenden':'Einblenden'}" onclick="toggleVisible('${p.id}')">${p.visible?'👁':'🙈'}</button>
             <button class="proj-btn" onclick="openEditModal('${p.id}')">✏️</button>
             <button class="proj-btn danger" onclick="deleteProject('${p.id}')">🗑</button>
@@ -3283,6 +3291,7 @@
     document.getElementById('modalProjDesc').value='';
     document.getElementById('modalProjTags').value='';
     document.getElementById('modalProjGrade').value='';
+    document.getElementById('modalProjLink').value='';
     document.getElementById('modalOverlay').classList.add('open');
   }
 
@@ -3295,6 +3304,7 @@
     document.getElementById('modalProjDesc').value=p.description;
     document.getElementById('modalProjTags').value=(p.tags||[]).join(', ');
     document.getElementById('modalProjGrade').value=p.grade||'';
+    document.getElementById('modalProjLink').value=p.link||'';
     document.getElementById('modalOverlay').classList.add('open');
   }
 
@@ -3307,12 +3317,13 @@
     if(!title||!desc){alert('Titel und Beschreibung sind Pflicht.');return;}
     const tags =document.getElementById('modalProjTags').value.split(',').map(t=>t.trim()).filter(Boolean);
     const grade=document.getElementById('modalProjGrade').value.trim()||null;
+    const link =document.getElementById('modalProjLink').value.trim()||null;
     if(editingId){
-      const res=await fetch(`/projects/${editingId}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({title,description:desc,tags,grade})});
+      const res=await fetch(`/projects/${editingId}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({title,description:desc,tags,grade,link})});
       const u=await res.json();
       const idx=projects.findIndex(p=>p.id===editingId); if(idx!==-1) projects[idx]=u;
     } else {
-      const res=await fetch('/projects',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({title,description:desc,tags,grade,visible:true})});
+      const res=await fetch('/projects',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({title,description:desc,tags,grade,link,visible:true})});
       projects.push(await res.json());
     }
     renderProjects(); closeModal();

@@ -1241,6 +1241,7 @@ def add_project():
         "description": data["description"].strip(),
         "tags":        [t.strip() for t in data.get("tags", []) if t.strip()],
         "grade":       data.get("grade") or None,
+        "link":        (data.get("link") or "").strip() or None,
         "visible":     data.get("visible", True),
     }
     projects = load_projects()
@@ -1259,6 +1260,8 @@ def update_project(project_id):
             p["description"] = data.get("description", p["description"]).strip()
             p["tags"]        = [t.strip() for t in data.get("tags", p.get("tags", [])) if t.strip()]
             p["grade"]       = data.get("grade", p.get("grade")) or None
+            if "link" in data:
+                p["link"]    = (data.get("link") or "").strip() or None
             p["visible"]     = data.get("visible", p.get("visible", True))
             save_projects(projects)
             return jsonify(p)
