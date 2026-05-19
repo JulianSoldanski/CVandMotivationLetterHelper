@@ -14,16 +14,23 @@ from urllib.parse import urlsplit, urlunsplit, parse_qsl, urlencode
 from cv_layouts import ANSCHREIBEN_HTML_STYLE, LAYOUTS
 from personal_config import get_candidate_base, get_contact, sender_address_html
 import db
+import demo_mode
 
 load_dotenv()
+
+# Wire up demo workspace BEFORE init_schema() so the DB created on first run
+# lands in the demo workdir (data/.demo/) instead of the real data/ dir.
+DEMO_ACTIVE = demo_mode.bootstrap()
+if DEMO_ACTIVE:
+    print(f"[demo] DEMO_MODE active — using workspace {demo_mode.DEMO_WORK}")
 
 app = Flask(__name__)
 
 GEMINI_MODEL      = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
-PROJECTS_FILE     = os.path.join(os.path.dirname(__file__), "data", "projects.json")
-PROFILE_FILE      = os.path.join(os.path.dirname(__file__), "data", "profile.json")
-APPLICATIONS_FILE = os.path.join(os.path.dirname(__file__), "data", "applications.json")
-SETTINGS_FILE     = os.path.join(os.path.dirname(__file__), "data", "settings.json")
+PROJECTS_FILE     = demo_mode.projects_path()
+PROFILE_FILE      = demo_mode.profile_path()
+APPLICATIONS_FILE = os.path.join(os.path.dirname(__file__), "data", "applications.json")  # legacy, only read by the JSON→SQLite migrator
+SETTINGS_FILE     = demo_mode.settings_path()
 
 db.init_schema()
 JOB_POSTING_MAX = 50_000
@@ -1255,6 +1262,13 @@ def fetch_job():
 @app.route("/layouts", methods=["GET"])
 def get_layouts():
     return jsonify([{"id": k, "name": v["name"], "style": v["style"]} for k, v in LAYOUTS.items()])
+
+
+@app.route("/mode", methods=["GET"])
+def get_mode():
+    """Tiny endpoint so the frontend can show a "DEMO" badge when the app
+    was started with DEMO_MODE=1. The frontend polls this once on load."""
+    return jsonify({"demo": demo_mode.is_demo_mode()})
 
 
 @app.route("/test-connection", methods=["GET"])

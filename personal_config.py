@@ -6,41 +6,61 @@ import json
 import os
 
 _BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-PERSONAL_FILE = os.path.join(_BASE_DIR, "config", "cv_personal.json")
 EXAMPLE_FILE = os.path.join(_BASE_DIR, "config", "cv_personal.example.json")
+
+
+def _personal_file_path() -> str:
+    """Resolve the active cv_personal.json path on every call.
+
+    Resolution is deferred (rather than captured at import time) so that
+    ``demo_mode.bootstrap()`` — which runs after ``load_dotenv()`` — can flip
+    the path without us needing a re-import dance.
+    """
+    try:
+        import demo_mode  # noqa: WPS433 — lazy avoids an import cycle
+        return demo_mode.cv_personal_path()
+    except ImportError:
+        return os.path.join(_BASE_DIR, "config", "cv_personal.json")
+
 
 _raw_cache: dict | None = None
 _raw_mtime: float | None = None
+_raw_path:  str | None = None
 
 
 def _personal_missing_message() -> str:
+    path = _personal_file_path()
     hint = ""
     if os.path.isfile(EXAMPLE_FILE):
         hint = (
-            f' Kopiere "{EXAMPLE_FILE}" nach "{PERSONAL_FILE}" '
+            f' Kopiere "{EXAMPLE_FILE}" nach "{path}" '
             "und trage deine Daten ein."
         )
-    return f"Persönliche Konfiguration fehlt: {PERSONAL_FILE}.{hint}"
+    return f"Persönliche Konfiguration fehlt: {path}.{hint}"
 
 
 def _load_raw() -> dict:
-    """Reload from disk when cv_personal.json changes (mtime), so edits apply without server restart."""
-    global _raw_cache, _raw_mtime
-    if not os.path.isfile(PERSONAL_FILE):
+    """Reload from disk when cv_personal.json changes (mtime or path), so
+    edits apply without a server restart and DEMO_MODE toggles take effect."""
+    global _raw_cache, _raw_mtime, _raw_path
+    path = _personal_file_path()
+    if not os.path.isfile(path):
         raise FileNotFoundError(_personal_missing_message())
-    mtime = os.path.getmtime(PERSONAL_FILE)
-    if _raw_cache is not None and _raw_mtime == mtime:
+    mtime = os.path.getmtime(path)
+    if _raw_cache is not None and _raw_mtime == mtime and _raw_path == path:
         return _raw_cache
-    with open(PERSONAL_FILE, "r", encoding="utf-8") as f:
+    with open(path, "r", encoding="utf-8") as f:
         _raw_cache = json.load(f)
     _raw_mtime = mtime
+    _raw_path  = path
     return _raw_cache
 
 
 def reload_personal_config() -> None:
-    global _raw_cache, _raw_mtime
+    global _raw_cache, _raw_mtime, _raw_path
     _raw_cache = None
     _raw_mtime = None
+    _raw_path  = None
 
 
 def get_candidate_base() -> str:

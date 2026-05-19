@@ -1,0 +1,100 @@
+{
+  "experience": [
+    {
+      "id": "mm-werks-2024",
+      "title": "Werkstudent Product Engineering",
+      "company": "MusterTech Solutions GmbH",
+      "location": "Berlin",
+      "start": "2024-09",
+      "end": "2026-03",
+      "current": true,
+      "bullets": [
+        "Eigenständige Umsetzung von Frontend-Features im internen Dashboard (React, TypeScript) — vom Figma-Mockup über Code Review bis zum Rollout.",
+        "Aufbau einer Event-getriebenen Analytics-Pipeline (Python, Postgres) zur Auswertung von Nutzungsverhalten — heute Grundlage für die Wochen-Reviews des Produktteams.",
+        "Migration mehrerer Legacy-Endpunkte auf REST + OpenAPI, inklusive Backwards-Compat-Tests."
+      ],
+      "visible": true
+    },
+    {
+      "id": "mm-praktikum-2024",
+      "title": "Praktikant Data Analytics",
+      "company": "Beispiel Logistik AG",
+      "location": "Hamburg",
+      "start": "2024-04",
+      "end": "2024-08",
+      "current": false,
+      "bullets": [
+        "Pricing-Analyse über 18 Monate Auftragsdaten (Python, pandas, SQL) — identifizierte 6% margin-leakage in einem unterperformanden Korridor.",
+        "Automatisierung wiederkehrender Excel-Auswertungen via Python-Skripten; spart dem Team ca. 4 Stunden pro Woche.",
+        "Präsentation der Ergebnisse vor dem Bereichsleiter Operations."
+      ],
+      "visible": true
+    },
+    {
+      "id": "mm-support-2022",
+      "title": "Studentische Hilfskraft IT-Support",
+      "company": "Universität Musterstadt",
+      "location": "Musterstadt",
+      "start": "2022-10",
+      "end": "2024-03",
+      "current": false,
+      "bullets": [
+        "Erste Anlaufstelle für Studierende und Mitarbeitende zu Account-, VPN- und Druckerproblemen (ø 25 Tickets/Woche).",
+        "Pflege der internen Wissensdatenbank inkl. Migration auf ein neues Wiki-System.",
+        "Onboarding und Mentoring von zwei neuen Hilfskräften."
+      ],
+      "visible": true
+    }
+  ],
+  "education": [
+    {
+      "id": "mm-msc-wi",
+      "degree": "M.Sc. Wirtschaftsinformatik",
+      "institution": "Humboldt-Universität Berlin",
+      "location": "Berlin",
+      "start": "2025-04",
+      "end": "2027-03",
+      "current": true,
+      "details": [
+        "Schwerpunkte: Information Systems Engineering, Data Science.",
+        "Aktiv in der Fachschaft Wirtschaftsinformatik (Studienberatung)."
+      ],
+      "visible": true
+    },
+    {
+      "id": "mm-bsc-wi",
+      "degree": "B.Sc. Wirtschaftsinformatik",
+      "institution": "Universität Musterstadt",
+      "location": "Musterstadt",
+      "start": "2021-10",
+      "end": "2025-03",
+      "current": false,
+      "details": [
+        "Abschluss: 1.7",
+        "Bachelorthesis (Note 1.3): „Event-getriebene Architekturen für interne Analytics-Pipelines“"
+      ],
+      "visible": true
+    }
+  ],
+  "hard_skills": [
+    { "id": "mm-hs-python",     "name": "Python" },
+    { "id": "mm-hs-typescript", "name": "TypeScript" },
+    { "id": "mm-hs-react",      "name": "React" },
+    { "id": "mm-hs-sql",        "name": "SQL / PostgreSQL" },
+    { "id": "mm-hs-flask",      "name": "Flask / FastAPI" },
+    { "id": "mm-hs-docker",     "name": "Docker" },
+    { "id": "mm-hs-git",        "name": "Git" },
+    { "id": "mm-hs-pandas",     "name": "pandas" }
+  ],
+  "soft_skills": [
+    { "id": "mm-ss-team",   "name": "Teamarbeit & Code Reviews" },
+    { "id": "mm-ss-learn",  "name": "Schnelle Einarbeitung in neue Stacks" },
+    { "id": "mm-ss-comm",   "name": "Stakeholder-Kommunikation" },
+    { "id": "mm-ss-struct", "name": "Strukturiertes, dokumentiertes Arbeiten" }
+  ],
+  "languages": [
+    { "id": "mm-lang-de", "name": "Deutsch",  "level": "Muttersprache" },
+    { "id": "mm-lang-en", "name": "Englisch", "level": "C1" },
+    { "id": "mm-lang-fr", "name": "Französisch", "level": "A2" }
+  ]
+}

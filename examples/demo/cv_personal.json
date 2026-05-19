@@ -1,0 +1,14 @@
+{
+  "candidate_base": "NAME: Max Mustermann\nADDRESS: Musterstraße 1, 10115 Berlin\nPHONE: +49 30 12345678\nEMAIL: max.mustermann@example.com\n\n--- INTERESTS / PERSONAL ---\nBerliner Wirtschaftsinformatiker mit Schwerpunkt auf Webentwicklung und Datenanalyse. Interessiert an Produktdenken, sauberen APIs und der Schnittstelle zwischen Tech und Geschäftslogik. In der Freizeit aktiv im lokalen Tech-Meetup und an Side-Projects, die echte Probleme lösen.\n",
+  "contact": {
+    "full_name": "Max Mustermann",
+    "address_dot": "Musterstraße 1 · 10115 Berlin",
+    "address_sidebar_html": "Musterstraße 1<br>10115 Berlin",
+    "phone": "+49 30 12345678",
+    "email": "max.mustermann@example.com"
+  },
+  "letter_address_lines": [
+    "Musterstraße 1",
+    "10115 Berlin"
+  ]
+}

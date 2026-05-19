@@ -1,0 +1,800 @@
+[
+  {
+    "id": "demo-musterai",
+    "company": "MusterAI Labs",
+    "position": "Werkstudent Backend Engineering",
+    "stage": "interview_2",
+    "applied_at": "2026-04-12",
+    "feedback": "Erstes Gespraech lief sehr gut - im zweiten Termin Coding-Aufgabe zu API-Design.",
+    "created_at": "2026-04-11T10:30:00",
+    "updated_at": "2026-05-05T14:15:00",
+    "stage_history": [
+      { "stage": "documents_created", "at": "2026-04-11T10:30:00" },
+      { "stage": "application_sent",  "at": "2026-04-12T09:00:00" },
+      { "stage": "interview_1",       "at": "2026-04-25T11:00:00" },
+      { "stage": "interview_2",       "at": "2026-05-05T14:15:00" }
+    ]
+  },
+  {
+    "id": "demo-beispielgmbh",
+    "company": "Beispiel GmbH",
+    "position": "Junior Software Engineer",
+    "stage": "interview_1",
+    "applied_at": "2026-04-28",
+    "feedback": "Telefoninterview mit HR positiv, technisches Gespraech steht aus.",
+    "created_at": "2026-04-27T16:00:00",
+    "updated_at": "2026-05-08T10:00:00",
+    "stage_history": [
+      { "stage": "documents_created", "at": "2026-04-27T16:00:00" },
+      { "stage": "application_sent",  "at": "2026-04-28T08:30:00" },
+      { "stage": "interview_1",       "at": "2026-05-08T10:00:00" }
+    ]
+  },
+  {
+    "id": "demo-acme-corp",
+    "company": "ACME Corporation",
+    "position": "Praktikant Produktentwicklung",
+    "stage": "application_sent",
+    "applied_at": "2026-05-10",
+    "feedback": "",
+    "created_at": "2026-05-09T20:00:00",
+    "updated_at": "2026-05-10T09:15:00",
+    "stage_history": [
+      { "stage": "documents_created", "at": "2026-05-09T20:00:00" },
+      { "stage": "application_sent",  "at": "2026-05-10T09:15:00" }
+    ]
+  },
+  {
+    "id": "demo-globaltech",
+    "company": "GlobalTech Berlin",
+    "position": "Werkstudent Data Analytics",
+    "stage": "application_sent",
+    "applied_at": "2026-05-14",
+    "feedback": "",
+    "created_at": "2026-05-13T18:45:00",
+    "updated_at": "2026-05-14T11:00:00",
+    "stage_history": [
+      { "stage": "documents_created", "at": "2026-05-13T18:45:00" },
+      { "stage": "application_sent",  "at": "2026-05-14T11:00:00" }
+    ]
+  },
+  {
+    "id": "demo-nordstartup",
+    "company": "NordStartup AG",
+    "position": "Junior Full-Stack Developer",
+    "stage": "rejected",
+    "applied_at": "2026-03-22",
+    "feedback": "Absage nach erstem Gespraech - Profil zu wenig Senior fuer die offene Rolle.",
+    "created_at": "2026-03-21T19:00:00",
+    "updated_at": "2026-04-08T13:30:00",
+    "stage_history": [
+      { "stage": "documents_created", "at": "2026-03-21T19:00:00" },
+      { "stage": "application_sent",  "at": "2026-03-22T09:30:00" },
+      { "stage": "interview_1",       "at": "2026-04-02T15:00:00" },
+      { "stage": "rejected",          "at": "2026-04-08T13:30:00" }
+    ]
+  },
+  {
+    "id": "demo-finbank",
+    "company": "FinBank Direkt",
+    "position": "Werkstudent IT-Operations",
+    "stage": "rejected",
+    "applied_at": "2026-03-05",
+    "feedback": "Standard-Absage per Mail, keine inhaltliche Rueckmeldung.",
+    "created_at": "2026-03-04T08:00:00",
+    "updated_at": "2026-03-19T10:00:00",
+    "stage_history": [
+      { "stage": "documents_created", "at": "2026-03-04T08:00:00" },
+      { "stage": "application_sent",  "at": "2026-03-05T11:00:00" },
+      { "stage": "rejected",          "at": "2026-03-19T10:00:00" }
+    ]
+  },
+  {
+    "id": "demo-greenenergy",
+    "company": "GreenEnergy Solutions",
+    "position": "Working Student Software Engineering",
+    "stage": "rejected",
+    "applied_at": "2026-02-18",
+    "feedback": "Stelle intern besetzt worden, freundliche Absage mit Hinweis auf zukuenftige Ausschreibungen.",
+    "created_at": "2026-02-17T21:30:00",
+    "updated_at": "2026-03-02T16:00:00",
+    "stage_history": [
+      { "stage": "documents_created", "at": "2026-02-17T21:30:00" },
+      { "stage": "application_sent",  "at": "2026-02-18T09:00:00" },
+      { "stage": "rejected",          "at": "2026-03-02T16:00:00" }
+    ]
+  },
+  {
+    "id": "demo-musterconsult",
+    "company": "MusterConsult Partners",
+    "position": "Praktikant Strategy & Operations",
+    "stage": "interview_3",
+    "applied_at": "2026-03-15",
+    "feedback": "Finalgespraech mit Partnerin - Entscheidung in der kommenden Woche.",
+    "created_at": "2026-03-14T11:00:00",
+    "updated_at": "2026-05-12T17:30:00",
+    "stage_history": [
+      { "stage": "documents_created", "at": "2026-03-14T11:00:00" },
+      { "stage": "application_sent",  "at": "2026-03-15T10:00:00" },
+      { "stage": "interview_1",       "at": "2026-04-04T14:00:00" },
+      { "stage": "interview_2",       "at": "2026-04-25T11:00:00" },
+      { "stage": "interview_3",       "at": "2026-05-12T17:30:00" }
+    ]
+  },
+
+  {
+    "id": "demo-tellurgmbh",
+    "company": "Tellur GmbH",
+    "position": "Werkstudent Backend Engineering",
+    "stage": "interview_2",
+    "applied_at": "2026-04-02",
+    "feedback": "Sehr technisches Gespraech zu Postgres-Performance und Indizes.",
+    "created_at": "2026-04-01T19:00:00",
+    "updated_at": "2026-05-14T16:00:00",
+    "stage_history": [
+      { "stage": "documents_created", "at": "2026-04-01T19:00:00" },
+      { "stage": "application_sent",  "at": "2026-04-02T08:30:00" },
+      { "stage": "interview_1",       "at": "2026-04-22T15:00:00" },
+      { "stage": "interview_2",       "at": "2026-05-14T16:00:00" }
+    ]
+  },
+  {
+    "id": "demo-stratosbank",
+    "company": "Stratosbank",
+    "position": "Praktikant Digital Banking",
+    "stage": "interview_1",
+    "applied_at": "2026-04-19",
+    "feedback": "Erstes Gespraech mit Team-Lead, fokussiert auf Stakeholder-Kommunikation.",
+    "created_at": "2026-04-18T22:00:00",
+    "updated_at": "2026-05-09T14:00:00",
+    "stage_history": [
+      { "stage": "documents_created", "at": "2026-04-18T22:00:00" },
+      { "stage": "application_sent",  "at": "2026-04-19T09:00:00" },
+      { "stage": "interview_1",       "at": "2026-05-09T14:00:00" }
+    ]
+  },
+  {
+    "id": "demo-helio-med",
+    "company": "HelioMed Digital",
+    "position": "Werkstudent Product Engineering",
+    "stage": "interview_1",
+    "applied_at": "2026-04-21",
+    "feedback": "Spannender Healthtech-Kontext, Folgetermin zu zweit mit CTO.",
+    "created_at": "2026-04-20T17:30:00",
+    "updated_at": "2026-05-13T11:30:00",
+    "stage_history": [
+      { "stage": "documents_created", "at": "2026-04-20T17:30:00" },
+      { "stage": "application_sent",  "at": "2026-04-21T09:30:00" },
+      { "stage": "interview_1",       "at": "2026-05-13T11:30:00" }
+    ]
+  },
+  {
+    "id": "demo-pragma-advisors",
+    "company": "Pragma Advisors",
+    "position": "Praktikant Strategy Consulting",
+    "stage": "interview_1",
+    "applied_at": "2026-05-02",
+    "feedback": "Case-Vorbereitung fuer naechste Runde laeuft.",
+    "created_at": "2026-05-01T21:00:00",
+    "updated_at": "2026-05-15T10:00:00",
+    "stage_history": [
+      { "stage": "documents_created", "at": "2026-05-01T21:00:00" },
+      { "stage": "application_sent",  "at": "2026-05-02T08:45:00" },
+      { "stage": "interview_1",       "at": "2026-05-15T10:00:00" }
+    ]
+  },
+  {
+    "id": "demo-fluxdata",
+    "company": "FluxData Solutions",
+    "position": "Werkstudent Data Engineering",
+    "stage": "interview_1",
+    "applied_at": "2026-05-04",
+    "feedback": "Erstes Gespraech ueber Datenpipelines und Airflow.",
+    "created_at": "2026-05-03T20:30:00",
+    "updated_at": "2026-05-16T09:30:00",
+    "stage_history": [
+      { "stage": "documents_created", "at": "2026-05-03T20:30:00" },
+      { "stage": "application_sent",  "at": "2026-05-04T09:00:00" },
+      { "stage": "interview_1",       "at": "2026-05-16T09:30:00" }
+    ]
+  },
+
+  {
+    "id": "demo-bytehaus",
+    "company": "ByteHaus AG",
+    "position": "Junior Software Engineer",
+    "stage": "application_sent",
+    "applied_at": "2026-05-15",
+    "feedback": "",
+    "created_at": "2026-05-14T22:00:00",
+    "updated_at": "2026-05-15T08:30:00",
+    "stage_history": [
+      { "stage": "documents_created", "at": "2026-05-14T22:00:00" },
+      { "stage": "application_sent",  "at": "2026-05-15T08:30:00" }
+    ]
+  },
+  {
+    "id": "demo-lumin",
+    "company": "Lumin AG",
+    "position": "Werkstudent Product Engineering",
+    "stage": "application_sent",
+    "applied_at": "2026-05-16",
+    "feedback": "",
+    "created_at": "2026-05-15T21:00:00",
+    "updated_at": "2026-05-16T10:30:00",
+    "stage_history": [
+      { "stage": "documents_created", "at": "2026-05-15T21:00:00" },
+      { "stage": "application_sent",  "at": "2026-05-16T10:30:00" }
+    ]
+  },
+  {
+    "id": "demo-eduflow",
+    "company": "EduFlow",
+    "position": "Werkstudent Backend Engineering",
+    "stage": "application_sent",
+    "applied_at": "2026-05-12",
+    "feedback": "",
+    "created_at": "2026-05-11T18:45:00",
+    "updated_at": "2026-05-12T09:00:00",
+    "stage_history": [
+      { "stage": "documents_created", "at": "2026-05-11T18:45:00" },
+      { "stage": "application_sent",  "at": "2026-05-12T09:00:00" }
+    ]
+  },
+  {
+    "id": "demo-koboldata",
+    "company": "KoboldData",
+    "position": "Werkstudent Data Analytics",
+    "stage": "application_sent",
+    "applied_at": "2026-05-13",
+    "feedback": "",
+    "created_at": "2026-05-12T22:30:00",
+    "updated_at": "2026-05-13T11:15:00",
+    "stage_history": [
+      { "stage": "documents_created", "at": "2026-05-12T22:30:00" },
+      { "stage": "application_sent",  "at": "2026-05-13T11:15:00" }
+    ]
+  },
+  {
+    "id": "demo-neopay",
+    "company": "NEO Pay",
+    "position": "Praktikant Product Management",
+    "stage": "application_sent",
+    "applied_at": "2026-05-15",
+    "feedback": "",
+    "created_at": "2026-05-14T19:00:00",
+    "updated_at": "2026-05-15T09:30:00",
+    "stage_history": [
+      { "stage": "documents_created", "at": "2026-05-14T19:00:00" },
+      { "stage": "application_sent",  "at": "2026-05-15T09:30:00" }
+    ]
+  },
+  {
+    "id": "demo-fahrwerklabs",
+    "company": "Fahrwerk Labs",
+    "position": "Working Student Frontend Engineering",
+    "stage": "application_sent",
+    "applied_at": "2026-05-08",
+    "feedback": "",
+    "created_at": "2026-05-07T19:30:00",
+    "updated_at": "2026-05-08T10:30:00",
+    "stage_history": [
+      { "stage": "documents_created", "at": "2026-05-07T19:30:00" },
+      { "stage": "application_sent",  "at": "2026-05-08T10:30:00" }
+    ]
+  },
+  {
+    "id": "demo-marktwege",
+    "company": "Marktwege GmbH",
+    "position": "Werkstudent E-Commerce Analytics",
+    "stage": "application_sent",
+    "applied_at": "2026-05-06",
+    "feedback": "",
+    "created_at": "2026-05-05T20:00:00",
+    "updated_at": "2026-05-06T08:30:00",
+    "stage_history": [
+      { "stage": "documents_created", "at": "2026-05-05T20:00:00" },
+      { "stage": "application_sent",  "at": "2026-05-06T08:30:00" }
+    ]
+  },
+  {
+    "id": "demo-rhinesoft",
+    "company": "RhineSoft GmbH",
+    "position": "Praktikant Software Engineering",
+    "stage": "application_sent",
+    "applied_at": "2026-05-09",
+    "feedback": "",
+    "created_at": "2026-05-08T21:00:00",
+    "updated_at": "2026-05-09T08:45:00",
+    "stage_history": [
+      { "stage": "documents_created", "at": "2026-05-08T21:00:00" },
+      { "stage": "application_sent",  "at": "2026-05-09T08:45:00" }
+    ]
+  },
+  {
+    "id": "demo-curanos",
+    "company": "Curanos AG",
+    "position": "Werkstudent Datenmanagement",
+    "stage": "application_sent",
+    "applied_at": "2026-05-07",
+    "feedback": "",
+    "created_at": "2026-05-06T22:00:00",
+    "updated_at": "2026-05-07T09:15:00",
+    "stage_history": [
+      { "stage": "documents_created", "at": "2026-05-06T22:00:00" },
+      { "stage": "application_sent",  "at": "2026-05-07T09:15:00" }
+    ]
+  },
+
+  {
+    "id": "demo-merkurkapital",
+    "company": "MerkurKapital",
+    "position": "Praktikant Risk Analytics",
+    "stage": "rejected",
+    "applied_at": "2025-11-12",
+    "feedback": "Standard-Absage nach 2 Wochen.",
+    "created_at": "2025-11-11T19:00:00",
+    "updated_at": "2025-11-26T10:00:00",
+    "stage_history": [
+      { "stage": "documents_created", "at": "2025-11-11T19:00:00" },
+      { "stage": "application_sent",  "at": "2025-11-12T09:00:00" },
+      { "stage": "rejected",          "at": "2025-11-26T10:00:00" }
+    ]
+  },
+  {
+    "id": "demo-vento",
+    "company": "Vento Solutions",
+    "position": "Werkstudent Software Engineering",
+    "stage": "rejected",
+    "applied_at": "2025-11-20",
+    "feedback": "",
+    "created_at": "2025-11-19T20:30:00",
+    "updated_at": "2025-12-05T11:00:00",
+    "stage_history": [
+      { "stage": "documents_created", "at": "2025-11-19T20:30:00" },
+      { "stage": "application_sent",  "at": "2025-11-20T09:00:00" },
+      { "stage": "rejected",          "at": "2025-12-05T11:00:00" }
+    ]
+  },
+  {
+    "id": "demo-omnetech",
+    "company": "OmnesTech",
+    "position": "Junior Full-Stack Developer",
+    "stage": "rejected",
+    "applied_at": "2025-12-04",
+    "feedback": "Praeferiert haben sie ein abgeschlossenes Studium.",
+    "created_at": "2025-12-03T19:00:00",
+    "updated_at": "2025-12-22T14:00:00",
+    "stage_history": [
+      { "stage": "documents_created", "at": "2025-12-03T19:00:00" },
+      { "stage": "application_sent",  "at": "2025-12-04T09:30:00" },
+      { "stage": "rejected",          "at": "2025-12-22T14:00:00" }
+    ]
+  },
+  {
+    "id": "demo-solwind",
+    "company": "Solwind Energy",
+    "position": "Werkstudent Data Analytics",
+    "stage": "rejected",
+    "applied_at": "2025-12-09",
+    "feedback": "",
+    "created_at": "2025-12-08T21:00:00",
+    "updated_at": "2025-12-29T10:00:00",
+    "stage_history": [
+      { "stage": "documents_created", "at": "2025-12-08T21:00:00" },
+      { "stage": "application_sent",  "at": "2025-12-09T09:00:00" },
+      { "stage": "rejected",          "at": "2025-12-29T10:00:00" }
+    ]
+  },
+  {
+    "id": "demo-pingsta",
+    "company": "Pingsta UG",
+    "position": "Working Student Software Engineering",
+    "stage": "rejected",
+    "applied_at": "2025-12-15",
+    "feedback": "Schade - kleines Team hat sich anders entschieden.",
+    "created_at": "2025-12-14T22:00:00",
+    "updated_at": "2026-01-08T11:00:00",
+    "stage_history": [
+      { "stage": "documents_created", "at": "2025-12-14T22:00:00" },
+      { "stage": "application_sent",  "at": "2025-12-15T09:00:00" },
+      { "stage": "rejected",          "at": "2026-01-08T11:00:00" }
+    ]
+  },
+  {
+    "id": "demo-shopvoyage",
+    "company": "ShopVoyage",
+    "position": "Werkstudent Backend Engineering",
+    "stage": "rejected",
+    "applied_at": "2025-12-19",
+    "feedback": "",
+    "created_at": "2025-12-18T20:00:00",
+    "updated_at": "2026-01-12T13:00:00",
+    "stage_history": [
+      { "stage": "documents_created", "at": "2025-12-18T20:00:00" },
+      { "stage": "application_sent",  "at": "2025-12-19T09:30:00" },
+      { "stage": "rejected",          "at": "2026-01-12T13:00:00" }
+    ]
+  },
+  {
+    "id": "demo-aurusmobility",
+    "company": "AurusMobility",
+    "position": "Werkstudent Frontend Engineering",
+    "stage": "rejected",
+    "applied_at": "2026-01-08",
+    "feedback": "Erstes Gespraech war ok, dann kam doch nichts.",
+    "created_at": "2026-01-07T18:00:00",
+    "updated_at": "2026-01-30T14:00:00",
+    "stage_history": [
+      { "stage": "documents_created", "at": "2026-01-07T18:00:00" },
+      { "stage": "application_sent",  "at": "2026-01-08T09:00:00" },
+      { "stage": "interview_1",       "at": "2026-01-22T14:00:00" },
+      { "stage": "rejected",          "at": "2026-01-30T14:00:00" }
+    ]
+  },
+  {
+    "id": "demo-evogreen",
+    "company": "EvoGreen",
+    "position": "Werkstudent Product Engineering",
+    "stage": "rejected",
+    "applied_at": "2026-01-12",
+    "feedback": "",
+    "created_at": "2026-01-11T21:00:00",
+    "updated_at": "2026-01-28T10:00:00",
+    "stage_history": [
+      { "stage": "documents_created", "at": "2026-01-11T21:00:00" },
+      { "stage": "application_sent",  "at": "2026-01-12T09:15:00" },
+      { "stage": "rejected",          "at": "2026-01-28T10:00:00" }
+    ]
+  },
+  {
+    "id": "demo-altstrat",
+    "company": "AltStrat Consulting",
+    "position": "Praktikant Strategy",
+    "stage": "rejected",
+    "applied_at": "2026-01-15",
+    "feedback": "Stelle anders besetzt.",
+    "created_at": "2026-01-14T22:30:00",
+    "updated_at": "2026-02-02T11:00:00",
+    "stage_history": [
+      { "stage": "documents_created", "at": "2026-01-14T22:30:00" },
+      { "stage": "application_sent",  "at": "2026-01-15T09:00:00" },
+      { "stage": "rejected",          "at": "2026-02-02T11:00:00" }
+    ]
+  },
+  {
+    "id": "demo-ortrund",
+    "company": "OrtRund",
+    "position": "Werkstudent IT-Operations",
+    "stage": "rejected",
+    "applied_at": "2026-01-20",
+    "feedback": "",
+    "created_at": "2026-01-19T20:00:00",
+    "updated_at": "2026-02-08T12:00:00",
+    "stage_history": [
+      { "stage": "documents_created", "at": "2026-01-19T20:00:00" },
+      { "stage": "application_sent",  "at": "2026-01-20T09:00:00" },
+      { "stage": "rejected",          "at": "2026-02-08T12:00:00" }
+    ]
+  },
+  {
+    "id": "demo-lerntalk",
+    "company": "LernRunde",
+    "position": "Junior Software Engineer",
+    "stage": "rejected",
+    "applied_at": "2026-01-25",
+    "feedback": "Gehaltsvorstellung passte am Ende nicht.",
+    "created_at": "2026-01-24T21:00:00",
+    "updated_at": "2026-02-15T16:00:00",
+    "stage_history": [
+      { "stage": "documents_created", "at": "2026-01-24T21:00:00" },
+      { "stage": "application_sent",  "at": "2026-01-25T09:30:00" },
+      { "stage": "interview_1",       "at": "2026-02-09T15:00:00" },
+      { "stage": "rejected",          "at": "2026-02-15T16:00:00" }
+    ]
+  },
+  {
+    "id": "demo-frachtpro",
+    "company": "FrachtPro",
+    "position": "Werkstudent Logistics Software",
+    "stage": "rejected",
+    "applied_at": "2026-02-02",
+    "feedback": "",
+    "created_at": "2026-02-01T19:00:00",
+    "updated_at": "2026-02-19T11:00:00",
+    "stage_history": [
+      { "stage": "documents_created", "at": "2026-02-01T19:00:00" },
+      { "stage": "application_sent",  "at": "2026-02-02T09:00:00" },
+      { "stage": "rejected",          "at": "2026-02-19T11:00:00" }
+    ]
+  },
+  {
+    "id": "demo-mertik",
+    "company": "Mertik Banking",
+    "position": "Praktikant Software Engineering",
+    "stage": "rejected",
+    "applied_at": "2026-02-09",
+    "feedback": "Profil zu wenig auf Backend fokussiert.",
+    "created_at": "2026-02-08T20:30:00",
+    "updated_at": "2026-02-26T14:00:00",
+    "stage_history": [
+      { "stage": "documents_created", "at": "2026-02-08T20:30:00" },
+      { "stage": "application_sent",  "at": "2026-02-09T09:00:00" },
+      { "stage": "rejected",          "at": "2026-02-26T14:00:00" }
+    ]
+  },
+  {
+    "id": "demo-fresh-kreis",
+    "company": "FreshKreis",
+    "position": "Working Student Data Analytics",
+    "stage": "rejected",
+    "applied_at": "2026-02-14",
+    "feedback": "",
+    "created_at": "2026-02-13T22:00:00",
+    "updated_at": "2026-03-04T10:30:00",
+    "stage_history": [
+      { "stage": "documents_created", "at": "2026-02-13T22:00:00" },
+      { "stage": "application_sent",  "at": "2026-02-14T09:00:00" },
+      { "stage": "rejected",          "at": "2026-03-04T10:30:00" }
+    ]
+  },
+  {
+    "id": "demo-kaufleicht",
+    "company": "KaufLeicht",
+    "position": "Werkstudent Frontend Engineering",
+    "stage": "rejected",
+    "applied_at": "2026-02-19",
+    "feedback": "Erstes Gespraech lief gut, danach ueberraschende Absage.",
+    "created_at": "2026-02-18T19:00:00",
+    "updated_at": "2026-03-12T15:00:00",
+    "stage_history": [
+      { "stage": "documents_created", "at": "2026-02-18T19:00:00" },
+      { "stage": "application_sent",  "at": "2026-02-19T09:00:00" },
+      { "stage": "interview_1",       "at": "2026-03-05T15:00:00" },
+      { "stage": "rejected",          "at": "2026-03-12T15:00:00" }
+    ]
+  },
+  {
+    "id": "demo-aurum",
+    "company": "Aurum Direct",
+    "position": "Praktikant Digital Finance",
+    "stage": "rejected",
+    "applied_at": "2026-02-23",
+    "feedback": "",
+    "created_at": "2026-02-22T21:00:00",
+    "updated_at": "2026-03-15T13:30:00",
+    "stage_history": [
+      { "stage": "documents_created", "at": "2026-02-22T21:00:00" },
+      { "stage": "application_sent",  "at": "2026-02-23T09:00:00" },
+      { "stage": "rejected",          "at": "2026-03-15T13:30:00" }
+    ]
+  },
+  {
+    "id": "demo-logicircle",
+    "company": "LogiCircle",
+    "position": "Werkstudent Backend Engineering",
+    "stage": "rejected",
+    "applied_at": "2026-03-01",
+    "feedback": "",
+    "created_at": "2026-02-28T18:00:00",
+    "updated_at": "2026-03-19T11:00:00",
+    "stage_history": [
+      { "stage": "documents_created", "at": "2026-02-28T18:00:00" },
+      { "stage": "application_sent",  "at": "2026-03-01T09:00:00" },
+      { "stage": "rejected",          "at": "2026-03-19T11:00:00" }
+    ]
+  },
+  {
+    "id": "demo-pixeline",
+    "company": "Pixeline GmbH",
+    "position": "Werkstudent Frontend Engineering",
+    "stage": "rejected",
+    "applied_at": "2026-03-07",
+    "feedback": "Stelle wurde zurueckgezogen.",
+    "created_at": "2026-03-06T22:00:00",
+    "updated_at": "2026-03-22T16:00:00",
+    "stage_history": [
+      { "stage": "documents_created", "at": "2026-03-06T22:00:00" },
+      { "stage": "application_sent",  "at": "2026-03-07T09:00:00" },
+      { "stage": "rejected",          "at": "2026-03-22T16:00:00" }
+    ]
+  },
+  {
+    "id": "demo-vamos",
+    "company": "Vamos UG",
+    "position": "Junior Full-Stack Developer",
+    "stage": "rejected",
+    "applied_at": "2026-03-11",
+    "feedback": "",
+    "created_at": "2026-03-10T19:00:00",
+    "updated_at": "2026-03-28T10:00:00",
+    "stage_history": [
+      { "stage": "documents_created", "at": "2026-03-10T19:00:00" },
+      { "stage": "application_sent",  "at": "2026-03-11T09:00:00" },
+      { "stage": "rejected",          "at": "2026-03-28T10:00:00" }
+    ]
+  },
+  {
+    "id": "demo-cinqu",
+    "company": "Cinqu Solutions",
+    "position": "Werkstudent Product Engineering",
+    "stage": "rejected",
+    "applied_at": "2026-03-18",
+    "feedback": "Gute Vibes im Gespraech, andere Kandidaten staerker.",
+    "created_at": "2026-03-17T20:00:00",
+    "updated_at": "2026-04-05T15:00:00",
+    "stage_history": [
+      { "stage": "documents_created", "at": "2026-03-17T20:00:00" },
+      { "stage": "application_sent",  "at": "2026-03-18T09:30:00" },
+      { "stage": "interview_1",       "at": "2026-04-01T15:00:00" },
+      { "stage": "rejected",          "at": "2026-04-05T15:00:00" }
+    ]
+  },
+  {
+    "id": "demo-byteforge",
+    "company": "ByteForge Berlin",
+    "position": "Praktikant Software Engineering",
+    "stage": "rejected",
+    "applied_at": "2026-03-24",
+    "feedback": "",
+    "created_at": "2026-03-23T21:30:00",
+    "updated_at": "2026-04-10T11:00:00",
+    "stage_history": [
+      { "stage": "documents_created", "at": "2026-03-23T21:30:00" },
+      { "stage": "application_sent",  "at": "2026-03-24T09:00:00" },
+      { "stage": "rejected",          "at": "2026-04-10T11:00:00" }
+    ]
+  },
+  {
+    "id": "demo-medivital",
+    "company": "MediVital",
+    "position": "Werkstudent Data Engineering",
+    "stage": "rejected",
+    "applied_at": "2026-03-27",
+    "feedback": "",
+    "created_at": "2026-03-26T22:00:00",
+    "updated_at": "2026-04-15T14:00:00",
+    "stage_history": [
+      { "stage": "documents_created", "at": "2026-03-26T22:00:00" },
+      { "stage": "application_sent",  "at": "2026-03-27T09:00:00" },
+      { "stage": "rejected",          "at": "2026-04-15T14:00:00" }
+    ]
+  },
+  {
+    "id": "demo-tellico",
+    "company": "Tellico Labs",
+    "position": "Working Student Backend Engineering",
+    "stage": "rejected",
+    "applied_at": "2026-04-01",
+    "feedback": "Bewerbungspool zu gross, Stelle schnell besetzt.",
+    "created_at": "2026-03-31T19:00:00",
+    "updated_at": "2026-04-12T10:00:00",
+    "stage_history": [
+      { "stage": "documents_created", "at": "2026-03-31T19:00:00" },
+      { "stage": "application_sent",  "at": "2026-04-01T09:00:00" },
+      { "stage": "rejected",          "at": "2026-04-12T10:00:00" }
+    ]
+  },
+  {
+    "id": "demo-frequenz",
+    "company": "FrequenzBerlin",
+    "position": "Werkstudent Audio Software",
+    "stage": "rejected",
+    "applied_at": "2026-04-04",
+    "feedback": "Profil zu wenig auf Audio/DSP fokussiert.",
+    "created_at": "2026-04-03T20:00:00",
+    "updated_at": "2026-04-18T13:00:00",
+    "stage_history": [
+      { "stage": "documents_created", "at": "2026-04-03T20:00:00" },
+      { "stage": "application_sent",  "at": "2026-04-04T09:00:00" },
+      { "stage": "rejected",          "at": "2026-04-18T13:00:00" }
+    ]
+  },
+  {
+    "id": "demo-stradium",
+    "company": "Stradium AG",
+    "position": "Werkstudent Backend Engineering",
+    "stage": "rejected",
+    "applied_at": "2026-04-10",
+    "feedback": "",
+    "created_at": "2026-04-09T21:00:00",
+    "updated_at": "2026-04-26T11:00:00",
+    "stage_history": [
+      { "stage": "documents_created", "at": "2026-04-09T21:00:00" },
+      { "stage": "application_sent",  "at": "2026-04-10T09:00:00" },
+      { "stage": "rejected",          "at": "2026-04-26T11:00:00" }
+    ]
+  },
+  {
+    "id": "demo-northstream",
+    "company": "NorthStream Tech",
+    "position": "Junior Software Engineer",
+    "stage": "rejected",
+    "applied_at": "2026-04-14",
+    "feedback": "Erstes Gespraech war fine, dann radio silence.",
+    "created_at": "2026-04-13T19:30:00",
+    "updated_at": "2026-05-02T12:00:00",
+    "stage_history": [
+      { "stage": "documents_created", "at": "2026-04-13T19:30:00" },
+      { "stage": "application_sent",  "at": "2026-04-14T09:00:00" },
+      { "stage": "interview_1",       "at": "2026-04-24T15:00:00" },
+      { "stage": "rejected",          "at": "2026-05-02T12:00:00" }
+    ]
+  },
+  {
+    "id": "demo-ecomobil",
+    "company": "EcoMobil GmbH",
+    "position": "Werkstudent Software Engineering",
+    "stage": "rejected",
+    "applied_at": "2026-04-17",
+    "feedback": "",
+    "created_at": "2026-04-16T22:00:00",
+    "updated_at": "2026-05-04T13:00:00",
+    "stage_history": [
+      { "stage": "documents_created", "at": "2026-04-16T22:00:00" },
+      { "stage": "application_sent",  "at": "2026-04-17T09:00:00" },
+      { "stage": "rejected",          "at": "2026-05-04T13:00:00" }
+    ]
+  },
+  {
+    "id": "demo-finextra",
+    "company": "FinExtra GmbH",
+    "position": "Praktikant Risk Analytics",
+    "stage": "rejected",
+    "applied_at": "2026-04-23",
+    "feedback": "",
+    "created_at": "2026-04-22T19:00:00",
+    "updated_at": "2026-05-07T15:00:00",
+    "stage_history": [
+      { "stage": "documents_created", "at": "2026-04-22T19:00:00" },
+      { "stage": "application_sent",  "at": "2026-04-23T09:30:00" },
+      { "stage": "rejected",          "at": "2026-05-07T15:00:00" }
+    ]
+  },
+  {
+    "id": "demo-vertex",
+    "company": "Vertex Partners",
+    "position": "Praktikant Strategy Consulting",
+    "stage": "rejected",
+    "applied_at": "2026-04-29",
+    "feedback": "Cases gut, am Ende eine andere Kandidatin genommen.",
+    "created_at": "2026-04-28T21:00:00",
+    "updated_at": "2026-05-11T14:00:00",
+    "stage_history": [
+      { "stage": "documents_created", "at": "2026-04-28T21:00:00" },
+      { "stage": "application_sent",  "at": "2026-04-29T09:00:00" },
+      { "stage": "interview_1",       "at": "2026-05-08T15:00:00" },
+      { "stage": "rejected",          "at": "2026-05-11T14:00:00" }
+    ]
+  },
+  {
+    "id": "demo-schiene42",
+    "company": "Schiene42",
+    "position": "Werkstudent Backend Engineering",
+    "stage": "rejected",
+    "applied_at": "2026-05-02",
+    "feedback": "",
+    "created_at": "2026-05-01T20:00:00",
+    "updated_at": "2026-05-13T10:30:00",
+    "stage_history": [
+      { "stage": "documents_created", "at": "2026-05-01T20:00:00" },
+      { "stage": "application_sent",  "at": "2026-05-02T09:00:00" },
+      { "stage": "rejected",          "at": "2026-05-13T10:30:00" }
+    ]
+  },
+  {
+    "id": "demo-govdigital",
+    "company": "GovDigital",
+    "position": "Werkstudent Software Engineering",
+    "stage": "rejected",
+    "applied_at": "2026-05-05",
+    "feedback": "Sicherheitsclearance haette zu lange gedauert.",
+    "created_at": "2026-05-04T21:00:00",
+    "updated_at": "2026-05-14T14:00:00",
+    "stage_history": [
+      { "stage": "documents_created", "at": "2026-05-04T21:00:00" },
+      { "stage": "application_sent",  "at": "2026-05-05T09:00:00" },
+      { "stage": "rejected",          "at": "2026-05-14T14:00:00" }
+    ]
+  }
+]

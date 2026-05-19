@@ -1,0 +1,75 @@
+[
+  {
+    "id": "mm-internal-dashboard",
+    "title": "Internes Analytics-Dashboard (MusterTech)",
+    "description": "Werkstudent-Projekt: Konzeption und Umsetzung eines internen Dashboards (React, TypeScript, REST-API gegen Postgres) zur Visualisierung von Nutzungsdaten. Komplett von Figma-Mockup bis Rollout begleitet, inkl. Code Reviews und Onboarding-Doku für neue Teammitglieder.",
+    "tags": [
+      "react",
+      "typescript",
+      "frontend",
+      "postgres",
+      "product"
+    ],
+    "grade": null,
+    "visible": true,
+    "link": "https://github.com/maxmustermann/demo-dashboard"
+  },
+  {
+    "id": "mm-pricing-analysis",
+    "title": "Pricing-Analyse Logistik-Korridore",
+    "description": "Praktikum bei einer Logistik-AG: Analyse von 18 Monaten Auftragsdaten in Python (pandas, SQL). Identifizierte 6 % margin-leakage in einem unterperformanden Korridor und präsentierte konkrete Handlungsempfehlungen vor dem Bereichsleiter.",
+    "tags": [
+      "python",
+      "pandas",
+      "sql",
+      "data-analysis",
+      "business-case"
+    ],
+    "grade": null,
+    "visible": true
+  },
+  {
+    "id": "mm-hackathon-eventflow",
+    "title": "Hackathon-Sieg „EventFlow Berlin\u201c",
+    "description": "48-Stunden-Hackathon: Mit einem 4er-Team eine Echtzeit-Auslastungsanzeige für lokale Cafés gebaut (Python-Backend mit FastAPI, leichtgewichtiges Vue-Frontend, Redis als Cache). Jury hob besonders die schnelle Validierung mit echten Café-Betreibern hervor.",
+    "tags": [
+      "python",
+      "fastapi",
+      "vue",
+      "hackathon",
+      "user-research"
+    ],
+    "grade": null,
+    "visible": true,
+    "link": "https://github.com/maxmustermann/eventflow-demo"
+  },
+  {
+    "id": "mm-bachelor-thesis",
+    "title": "Bachelorthesis: Event-getriebene Analytics-Pipelines",
+    "description": "Bachelorarbeit (Note 1.3) über die Architektur event-getriebener Analytics-Pipelines für interne Reporting-Use-Cases. Vergleich von Kafka-, NATS- und Postgres-LISTEN/NOTIFY-basierten Lösungen anhand eines Prototyps in einem Mittelständler.",
+    "tags": [
+      "architecture",
+      "event-driven",
+      "kafka",
+      "postgres",
+      "research"
+    ],
+    "grade": "1.3",
+    "visible": true
+  },
+  {
+    "id": "mm-cv-helper",
+    "title": "CV & Anschreiben Generator (Personal Project)",
+    "description": "Flask-Webapp, die aus einer Stellenanzeige + eigenem Profil per Google Gemini einen zugeschnittenen Lebenslauf und ein passendes Anschreiben erzeugt. Enthält einen Bewerbungstracker mit zeitgestempelter Stage-History in SQLite und einen editierbaren KI-Stiltransfer.",
+    "tags": [
+      "python",
+      "flask",
+      "sqlite",
+      "llm",
+      "full-stack"
+    ],
+    "grade": null,
+    "visible": true,
+    "link": "https://github.com/maxmustermann/cv-helper-demo"
+  }
+]
