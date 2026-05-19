@@ -50,9 +50,22 @@ def init_schema():
                 at             TEXT NOT NULL
             );
 
+            CREATE TABLE IF NOT EXISTS job_queue (
+                id             TEXT PRIMARY KEY,
+                url            TEXT NOT NULL,
+                title          TEXT NOT NULL DEFAULT '',
+                note           TEXT NOT NULL DEFAULT '',
+                status         TEXT NOT NULL DEFAULT 'pending',
+                added_at       TEXT NOT NULL,
+                processed_at   TEXT,
+                error          TEXT,
+                application_id TEXT REFERENCES applications(id) ON DELETE SET NULL
+            );
+
             CREATE INDEX IF NOT EXISTS idx_events_app   ON stage_events(application_id, at);
             CREATE INDEX IF NOT EXISTS idx_events_stage ON stage_events(stage);
             CREATE INDEX IF NOT EXISTS idx_apps_company ON applications(company);
+            CREATE INDEX IF NOT EXISTS idx_queue_status ON job_queue(status, added_at);
         """)
         # Lightweight forward-migration for users who already ran an earlier
         # init_schema before the snapshot columns existed.
@@ -219,4 +232,108 @@ def last_stage_event(app_id: str) -> dict | None:
 def delete_application(app_id: str) -> bool:
     with get_conn() as conn:
         cur = conn.execute("DELETE FROM applications WHERE id = ?", (app_id,))
+        return cur.rowcount > 0
+
+
+# ─── Queue (job links collected throughout the day) ──────────────────────────
+
+QUEUE_STATUSES = ("pending", "processing", "done", "failed", "skipped")
+
+
+def _queue_row_to_dict(row: sqlite3.Row) -> dict:
+    return {
+        "id":             row["id"],
+        "url":            row["url"],
+        "title":          row["title"],
+        "note":           row["note"],
+        "status":         row["status"],
+        "added_at":       row["added_at"],
+        "processed_at":   row["processed_at"],
+        "error":          row["error"],
+        "application_id": row["application_id"],
+    }
+
+
+def list_queue(status: str | None = None) -> list[dict]:
+    with get_conn() as conn:
+        if status:
+            rows = conn.execute(
+                "SELECT * FROM job_queue WHERE status = ? ORDER BY added_at DESC",
+                (status,),
+            ).fetchall()
+        else:
+            # Pending first (oldest first so you work through them in order),
+            # then everything else newest-first.
+            rows = conn.execute(
+                """SELECT * FROM job_queue
+                   ORDER BY CASE status WHEN 'pending' THEN 0 ELSE 1 END,
+                            CASE status WHEN 'pending' THEN added_at END ASC,
+                            added_at DESC"""
+            ).fetchall()
+        return [_queue_row_to_dict(r) for r in rows]
+
+
+def get_queue_item(qid: str) -> dict | None:
+    with get_conn() as conn:
+        row = conn.execute("SELECT * FROM job_queue WHERE id = ?", (qid,)).fetchone()
+        return _queue_row_to_dict(row) if row else None
+
+
+def find_queue_item_by_url(url: str) -> dict | None:
+    """Find an existing queue entry with the same URL (any status).
+
+    Used to dedupe when the bookmarklet is clicked twice on the same posting.
+    """
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT * FROM job_queue WHERE url = ? ORDER BY added_at DESC LIMIT 1",
+            (url,),
+        ).fetchone()
+        return _queue_row_to_dict(row) if row else None
+
+
+def add_queue_item(qid: str, url: str, title: str, note: str, added_at: str) -> dict:
+    with get_conn() as conn:
+        conn.execute(
+            """INSERT INTO job_queue (id, url, title, note, status, added_at)
+               VALUES (?, ?, ?, ?, 'pending', ?)""",
+            (qid, url, title, note, added_at),
+        )
+    return get_queue_item(qid)  # type: ignore[return-value]
+
+
+def update_queue_item(
+    qid: str,
+    *,
+    status: str | None = None,
+    note: str | None = None,
+    error: str | None = None,
+    processed_at: str | None = None,
+    application_id: str | None = None,
+) -> dict | None:
+    """Partial-update a queue row. Only fields explicitly passed are touched."""
+    sets, vals = [], []
+    if status is not None:
+        if status not in QUEUE_STATUSES:
+            raise ValueError(f"invalid status: {status}")
+        sets.append("status = ?"); vals.append(status)
+    if note is not None:
+        sets.append("note = ?"); vals.append(note)
+    if error is not None:
+        sets.append("error = ?"); vals.append(error)
+    if processed_at is not None:
+        sets.append("processed_at = ?"); vals.append(processed_at)
+    if application_id is not None:
+        sets.append("application_id = ?"); vals.append(application_id)
+    if not sets:
+        return get_queue_item(qid)
+    vals.append(qid)
+    with get_conn() as conn:
+        conn.execute(f"UPDATE job_queue SET {', '.join(sets)} WHERE id = ?", vals)
+    return get_queue_item(qid)
+
+
+def delete_queue_item(qid: str) -> bool:
+    with get_conn() as conn:
+        cur = conn.execute("DELETE FROM job_queue WHERE id = ?", (qid,))
         return cur.rowcount > 0

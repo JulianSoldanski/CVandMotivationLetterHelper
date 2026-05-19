@@ -481,6 +481,83 @@
     white-space:pre-wrap; word-break:break-word; max-height:320px; overflow-y:auto;
   }
   .apps-list { display:flex; flex-direction:column; gap:0.9rem; }
+
+  /* Queue */
+  .queue-add-row {
+    display:flex; gap:0.5rem; margin-bottom:1.1rem;
+    background:#fff; border:1px solid #e3e6ea; border-radius:10px;
+    padding:0.65rem 0.8rem;
+  }
+  .queue-add-row input {
+    border:1px solid #ddd; border-radius:6px; padding:0.45rem 0.65rem;
+    font-size:0.85rem; color:#2c3e50;
+  }
+  .queue-add-row input[type="url"]  { flex:2; }
+  .queue-add-row input[type="text"] { flex:1; }
+  .queue-add-row button { padding:0.45rem 0.95rem; font-size:0.82rem; }
+
+  .queue-list { display:flex; flex-direction:column; gap:0.7rem; }
+  .queue-card {
+    background:#fff; border:1px solid #e3e6ea; border-radius:10px;
+    padding:0.85rem 1rem; display:flex; gap:0.85rem; align-items:flex-start;
+    box-shadow:0 1px 3px rgba(0,0,0,.03);
+  }
+  .queue-card.done    { opacity:0.55; }
+  .queue-card.skipped { opacity:0.45; }
+  .queue-card.failed  { border-left:4px solid #c0392b; }
+  .queue-card-body { flex:1; min-width:0; }
+  .queue-card-title {
+    font-size:0.92rem; font-weight:600; color:#2c3e50;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+    margin-bottom:0.15rem;
+  }
+  .queue-card-url {
+    font-size:0.74rem; color:#3498db; text-decoration:none;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+    display:block; max-width:100%;
+  }
+  .queue-card-url:hover { text-decoration:underline; }
+  .queue-card-meta {
+    font-size:0.72rem; color:#999; margin-top:0.25rem;
+    display:flex; flex-wrap:wrap; gap:0.5rem; align-items:center;
+  }
+  .queue-card-note {
+    margin-top:0.35rem; font-size:0.78rem; color:#5d6d7e;
+    background:#f8fafb; padding:0.3rem 0.55rem; border-radius:6px;
+    border-left:3px solid #cfd8dc;
+  }
+  .queue-card-err {
+    margin-top:0.35rem; font-size:0.76rem; color:#c0392b;
+    background:#fdecea; padding:0.3rem 0.55rem; border-radius:6px;
+  }
+  .queue-card-actions {
+    display:flex; gap:0.3rem; flex-shrink:0; align-items:center;
+  }
+  .queue-btn {
+    background:transparent; border:1px solid #d6dade; border-radius:6px;
+    padding:0.35rem 0.7rem; font-size:0.76rem; font-weight:600; cursor:pointer;
+    color:#4B5D67; transition:all .15s;
+  }
+  .queue-btn:hover { background:#f5f6f8; border-color:#4B5D67; }
+  .queue-btn.primary { background:#4B5D67; color:#fff; border-color:#4B5D67; }
+  .queue-btn.primary:hover { background:#3a4a52; }
+  .queue-btn.danger { color:#c0392b; }
+  .queue-btn.danger:hover { background:#fdecea; border-color:#c0392b; }
+
+  .queue-empty {
+    background:#fff; border:1px dashed #ddd; border-radius:10px;
+    padding:2.2rem 1.5rem; text-align:center; color:#999; font-size:0.88rem;
+  }
+  .queue-empty a { color:#3498db; }
+
+  .queue-archive { margin-top:1.6rem; }
+  .queue-archive > summary {
+    cursor:pointer; font-size:0.82rem; color:#888; padding:0.5rem 0;
+    user-select:none;
+  }
+  .queue-archive-body {
+    display:flex; flex-direction:column; gap:0.5rem; margin-top:0.5rem;
+  }
   .app-card {
     background:#fff; border:1px solid #e3e6ea; border-radius:10px;
     padding:1.1rem 1.3rem; box-shadow:0 1px 3px rgba(0,0,0,.04);
@@ -690,6 +767,7 @@
   <span>Gemini Flash</span>
   <nav class="view-nav">
     <button class="view-btn active" id="navGenerator" onclick="showView('generator')">Generator</button>
+    <button class="view-btn" id="navQueue" onclick="showView('queue')">📥 Queue <span class="view-badge" id="queueCountBadge">0</span></button>
     <button class="view-btn" id="navProfile" onclick="showView('profile')">Profil</button>
     <button class="view-btn" id="navApplications" onclick="showView('applications')">Bewerbungen <span class="view-badge" id="appsCountBadge">0</span></button>
     <button class="view-btn" id="navStats" onclick="showView('stats')">📊 Statistik</button>
@@ -1082,6 +1160,32 @@
   </div>
 </div>
 
+<!-- QUEUE VIEW -->
+<div id="queueView" style="display:none">
+  <div class="apps-wrap">
+    <div class="apps-toolbar">
+      <div>
+        <h2 class="apps-title">📥 Queue</h2>
+        <p class="apps-sub" id="queueSub">Lade Queue…</p>
+      </div>
+      <a class="apps-add-btn" href="/queue/install" target="_blank" style="text-decoration:none;display:inline-block">⚡ Bookmarklet einrichten</a>
+    </div>
+
+    <div class="queue-add-row">
+      <input type="url" id="queueAddUrl" placeholder="https://www.stepstone.de/job/… (URL einfügen + Enter)"/>
+      <input type="text" id="queueAddNote" placeholder="Notiz (opt.)" maxlength="200"/>
+      <button class="apps-add-btn" onclick="addQueueFromInput()">Hinzufügen</button>
+    </div>
+
+    <div class="queue-list" id="queueList"></div>
+
+    <details class="queue-archive" id="queueArchive" style="display:none">
+      <summary>Erledigt &amp; übersprungen</summary>
+      <div class="queue-archive-body" id="queueArchiveList"></div>
+    </details>
+  </div>
+</div>
+
 <!-- APPLICATIONS VIEW -->
 <div id="applicationsView" style="display:none">
   <div class="apps-wrap">
@@ -1374,12 +1478,13 @@
   const LINEAR_STAGES = APP_STAGES.filter(s => s.key !== 'rejected');
 
   async function init() {
-    const [projectsRes, profileRes, layoutsRes, appsRes, settingsRes] = await Promise.all([
+    const [projectsRes, profileRes, layoutsRes, appsRes, settingsRes, queueRes] = await Promise.all([
       fetch('/projects'),
       fetch('/profile'),
       fetch('/layouts'),
       fetch('/applications'),
-      fetch('/settings')
+      fetch('/settings'),
+      fetch('/queue')
     ]);
     projects = await projectsRes.json();
     profile = await profileRes.json();
@@ -1398,21 +1503,235 @@
     renderEntries('education');
     renderSkills();
     updateAppsCount();
+    queue = await queueRes.json();
+    updateQueueBadge();
+
+    // Enter im Queue-URL-Feld → hinzufügen
+    const qUrl  = document.getElementById('queueAddUrl');
+    const qNote = document.getElementById('queueAddNote');
+    if (qUrl)  qUrl.addEventListener('keydown',  e => { if (e.key === 'Enter') addQueueFromInput(); });
+    if (qNote) qNote.addEventListener('keydown', e => { if (e.key === 'Enter') addQueueFromInput(); });
   }
 
-  // ── View switching (Generator ↔ Bewerbungen ↔ Einstellungen) ──
+  // ── Queue ──
+  let queue = [];
+
+  function updateQueueBadge() {
+    const n = queue.filter(q => q.status === 'pending').length;
+    const badge = document.getElementById('queueCountBadge');
+    if (badge) badge.textContent = n;
+  }
+
+  function timeAgo(iso) {
+    if (!iso) return '';
+    const then = new Date(iso).getTime();
+    if (!isFinite(then)) return '';
+    const sec = Math.max(0, Math.round((Date.now() - then) / 1000));
+    if (sec <  60)    return `vor ${sec}s`;
+    if (sec <  3600)  return `vor ${Math.round(sec/60)}min`;
+    if (sec <  86400) return `vor ${Math.round(sec/3600)}h`;
+    return `vor ${Math.round(sec/86400)}d`;
+  }
+
+  function domainOf(url) {
+    try { return new URL(url).hostname.replace(/^www\./, ''); }
+    catch { return url; }
+  }
+
+  function escapeHtml(s) {
+    return String(s || '').replace(/[&<>"']/g, c => ({
+      '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+    }[c]));
+  }
+
+  async function refreshQueue() {
+    try {
+      const res = await fetch('/queue');
+      queue = await res.json();
+    } catch (e) {
+      queue = [];
+    }
+    renderQueue();
+    updateQueueBadge();
+  }
+
+  function renderQueue() {
+    const list    = document.getElementById('queueList');
+    const archive = document.getElementById('queueArchive');
+    const archBody = document.getElementById('queueArchiveList');
+    const sub     = document.getElementById('queueSub');
+    if (!list) return;
+
+    const pending = queue.filter(q => q.status === 'pending');
+    const others  = queue.filter(q => q.status !== 'pending');
+
+    sub.textContent = pending.length === 0
+      ? 'Keine offenen Einträge — leg dir das Bookmarklet an und füg Stellen hinzu, während du surfst.'
+      : `${pending.length} ${pending.length === 1 ? 'Stelle wartet' : 'Stellen warten'} auf Bearbeitung.`;
+
+    if (pending.length === 0) {
+      list.innerHTML = `
+        <div class="queue-empty">
+          Noch nichts in der Queue.<br>
+          Richte das <a href="/queue/install" target="_blank">Bookmarklet</a> ein,
+          oder paste eine URL oben rein.
+        </div>`;
+    } else {
+      list.innerHTML = pending.map(renderQueueCard).join('');
+    }
+
+    if (others.length === 0) {
+      archive.style.display = 'none';
+    } else {
+      archive.style.display = '';
+      archive.querySelector('summary').textContent =
+        `Erledigt & übersprungen (${others.length})`;
+      archBody.innerHTML = others.map(renderQueueCard).join('');
+    }
+  }
+
+  function renderQueueCard(q) {
+    const title = q.title || domainOf(q.url);
+    const meta  = [
+      `<span>${escapeHtml(domainOf(q.url))}</span>`,
+      `<span>${timeAgo(q.added_at)}</span>`,
+    ];
+    if (q.status === 'done')    meta.push('<span style="color:#27ae60;font-weight:600">✓ erledigt</span>');
+    if (q.status === 'skipped') meta.push('<span>↷ übersprungen</span>');
+    if (q.status === 'failed')  meta.push('<span style="color:#c0392b;font-weight:600">⚠ fehlgeschlagen</span>');
+
+    let actions = '';
+    if (q.status === 'pending') {
+      actions = `
+        <button class="queue-btn primary" onclick="openInGenerator('${q.id}')" title="Im Generator öffnen">→ Generieren</button>
+        <button class="queue-btn" onclick="markQueueStatus('${q.id}','skipped')" title="Überspringen">↷</button>
+        <button class="queue-btn danger" onclick="deleteQueueItem('${q.id}')" title="Löschen">✕</button>
+      `;
+    } else {
+      actions = `
+        <button class="queue-btn" onclick="markQueueStatus('${q.id}','pending')" title="Zurück in die Queue">↩</button>
+        <button class="queue-btn danger" onclick="deleteQueueItem('${q.id}')" title="Löschen">✕</button>
+      `;
+    }
+
+    return `
+      <div class="queue-card ${q.status}">
+        <div class="queue-card-body">
+          <div class="queue-card-title">${escapeHtml(title)}</div>
+          <a class="queue-card-url" href="${escapeHtml(q.url)}" target="_blank" rel="noopener">${escapeHtml(q.url)}</a>
+          <div class="queue-card-meta">${meta.join('·&nbsp;')}</div>
+          ${q.note ? `<div class="queue-card-note">${escapeHtml(q.note)}</div>` : ''}
+          ${q.error ? `<div class="queue-card-err">${escapeHtml(q.error)}</div>` : ''}
+        </div>
+        <div class="queue-card-actions">${actions}</div>
+      </div>`;
+  }
+
+  async function addQueueFromInput() {
+    const urlEl  = document.getElementById('queueAddUrl');
+    const noteEl = document.getElementById('queueAddNote');
+    const url    = (urlEl.value  || '').trim();
+    const note   = (noteEl.value || '').trim();
+    if (!url) { urlEl.focus(); return; }
+    try {
+      const res = await fetch('/queue', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url, note })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Hinzufügen fehlgeschlagen.');
+      urlEl.value = ''; noteEl.value = '';
+      await refreshQueue();
+    } catch (e) {
+      alert('Fehler: ' + e.message);
+    }
+  }
+
+  async function markQueueStatus(qid, status) {
+    try {
+      const res = await fetch('/queue/' + encodeURIComponent(qid), {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status })
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Update fehlgeschlagen.');
+      }
+      await refreshQueue();
+    } catch (e) {
+      alert('Fehler: ' + e.message);
+    }
+  }
+
+  async function deleteQueueItem(qid) {
+    if (!confirm('Eintrag wirklich löschen?')) return;
+    try {
+      const res = await fetch('/queue/' + encodeURIComponent(qid), { method: 'DELETE' });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Löschen fehlgeschlagen.');
+      }
+      await refreshQueue();
+    } catch (e) {
+      alert('Fehler: ' + e.message);
+    }
+  }
+
+  async function markQueueDoneSilently(qid, applicationId) {
+    try {
+      const body = { status: 'done' };
+      if (applicationId) body.application_id = applicationId;
+      await fetch('/queue/' + encodeURIComponent(qid), {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      // Lokalen State updaten ohne Refresh
+      const item = queue.find(q => q.id === qid);
+      if (item) {
+        item.status = 'done';
+        if (applicationId) item.application_id = applicationId;
+      }
+      updateQueueBadge();
+    } catch (_) {
+      // Silent fail — der Generator hat funktioniert, das ist nur Buchführung.
+    }
+  }
+
+  async function openInGenerator(qid) {
+    const item = queue.find(q => q.id === qid);
+    if (!item) return;
+    showView('generator');
+    // URL-Mode aktivieren und URL eintragen
+    const urlBtn = document.querySelector('.mode-btn[data-mode="url"]');
+    if (urlBtn) switchInputMode('url', urlBtn);
+    const urlInput = document.getElementById('job_url');
+    if (urlInput) urlInput.value = item.url;
+    // Stellenanzeige automatisch laden + Felder extrahieren
+    try { await fetchJobUrl(); } catch (_) {}
+    // Eintrag als erledigt markieren (nach Generieren wäre sauberer, aber der
+    // User entscheidet ab hier selbst — diesen Schritt automatisieren wir
+    // bewusst NICHT, damit Generator-Klick weiterhin manuell bleibt)
+  }
+
+  // ── View switching (Generator ↔ Queue ↔ Bewerbungen ↔ Einstellungen) ──
   function showView(view) {
     document.getElementById('generatorView').style.display    = view === 'generator'    ? 'grid'  : 'none';
+    document.getElementById('queueView').style.display        = view === 'queue'        ? 'block' : 'none';
     document.getElementById('profileView').style.display      = view === 'profile'      ? 'block' : 'none';
     document.getElementById('applicationsView').style.display = view === 'applications' ? 'block' : 'none';
     document.getElementById('statsView').style.display        = view === 'stats'        ? 'block' : 'none';
     document.getElementById('settingsView').style.display     = view === 'settings'     ? 'block' : 'none';
     document.getElementById('navGenerator').classList.toggle('active',    view === 'generator');
+    document.getElementById('navQueue').classList.toggle('active',        view === 'queue');
     document.getElementById('navProfile').classList.toggle('active',      view === 'profile');
     document.getElementById('navApplications').classList.toggle('active', view === 'applications');
     document.getElementById('navStats').classList.toggle('active',        view === 'stats');
     document.getElementById('navSettings').classList.toggle('active',     view === 'settings');
     if (view === 'applications') renderApplications();
+    if (view === 'queue') refreshQueue();
     if (view === 'profile') refreshProfileView();
     if (view === 'stats') renderStats();
   }
@@ -2560,6 +2879,16 @@
         if (i >= 0) applications[i] = data.application;
         else        applications.push(data.application);
         updateAppsCount();
+      }
+
+      // Falls die generierte Stelle aus der Queue stammte: Queue-Eintrag auf
+      // 'done' setzen und mit der frisch erzeugten Bewerbung verknüpfen.
+      const usedUrl = (payload.job_url || '').trim();
+      if (usedUrl) {
+        const match = queue.find(q => q.status === 'pending' && q.url === usedUrl);
+        if (match) {
+          markQueueDoneSilently(match.id, data.application && data.application.id);
+        }
       }
 
       // Show editor tab
