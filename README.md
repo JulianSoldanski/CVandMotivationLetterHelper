@@ -11,7 +11,51 @@ managing the entire job-application loop end-to-end.
 > Built solo as a side project. Development decisions are logged in
 > [docs/JOURNAL.md](docs/JOURNAL.md) — the "why" behind each feature.
 
-https://github.com/user-attachments/assets/cadc29bd-8636-4689-8e2c-d4ec5ad4f9a7
+---
+
+## Walkthrough
+
+A four-part screencast of the full loop, from clipping a posting to
+landing the interview tracker. Each clip is ~30–60 seconds.
+
+
+### Part 1 — Capture: bookmarklet → queue → AI job summary
+
+Install the `→ Queue` bookmarklet, click it from any job page, watch the
+posting land in the central queue, and see Gemini's **Stellen-Übersicht**
+condense the company, the role, and the requested tech stack into a
+glance-able summary.
+
+
+
+### Part 2 — Generate the CV (and cover letter)
+
+One click turns the queued posting into a tailored CV in your chosen
+layout (Modern / Sidebar / Classic) plus a matching Anschreiben in DE or
+EN. Edit the profile statement, swap experience bullets, toggle projects
+— live preview updates as you go.
+
+
+
+### Part 3 — Track applications & statistics
+
+Every Generieren auto-logs an application. The Bewerbungen view shows
+the funnel stepper (Erstellt → Versendet → 1./2./3. Gespräch · Abgesagt)
+with per-card timestamps and a per-application snapshot of exactly what
+got sent. The Statistik tab turns the underlying `stage_events` history
+into a funnel chart and time-in-stage averages.
+
+
+
+### Part 4 — Profile & AI writing-style analysis
+
+Build out the profile (experience, education, skills, languages,
+projects), then paste an example cover letter and let Gemini **distill
+your writing style** into editable bullet rules. Future Anschreiben
+follow those rules, not the raw example — so you can steer the AI's
+voice without rewriting letters from scratch.
+
+
 
 ---
 
@@ -45,6 +89,17 @@ https://github.com/user-attachments/assets/cadc29bd-8636-4689-8e2c-d4ec5ad4f9a7
 - Built-in KI-Feedback chat: ask "Was fehlt?", "Welche Keywords?", "Was
   fällt HR zuerst auf?" — Gemini answers with the full document context.
 
+**Profil (Profile + writing-style)**
+- One tab for everything that defines *you*: experience, education,
+  hard / soft skills, languages, and projects (with optional GitHub /
+  demo links rendered inline in the CV).
+- Bottom of the same tab: paste a motivation letter you like in DE
+  and/or EN, click **✨ Stil analysieren** — Gemini distills it into a
+  bullet-point style guide (tone, sentence structure, word choice,
+  idiosyncrasies).
+- **Edit the analysis freely.** Future cover letters follow these rules,
+  not the raw example. Lets you steer the AI's voice precisely.
+
 **Bewerbungen (Application tracker)**
 - Every Generieren click auto-logs an application (deduped by company +
   position). The original posting URL is stored too — one click on the card
@@ -61,12 +116,12 @@ https://github.com/user-attachments/assets/cadc29bd-8636-4689-8e2c-d4ec5ad4f9a7
 - Feedback / notes textarea per card. Manual-add for applications you sent
   before using the tool.
 
-**Einstellungen (Settings)**
-- Paste a motivation letter you like in DE and/or EN.
-- Click **✨ Stil analysieren** — Gemini distills it into a bullet-point
-  style guide (tone, sentence structure, word choice, idiosyncrasies).
-- **Edit the analysis freely.** Future cover letters follow these rules,
-  not the raw example. Lets you steer the AI's voice precisely.
+**Statistik**
+- Funnel view over the application lifecycle: how many got sent, how
+  many reached each interview stage, how many were rejected.
+- Time-in-stage averages and monthly throughput, all derived from the
+  append-only `stage_events` history — so the chart is always consistent
+  with what the tracker shows.
 
 ---
 
@@ -134,11 +189,12 @@ A few things that aren't obvious from the screenshot:
                        ▼
 ┌──────────────────────────────────────────────────────────────┐
 │ Browser (single-page, vanilla JS)                            │
-│  ┌──────────┐ ┌────────┐ ┌─────────────┐ ┌──────────────┐    │
-│  │Generator │ │ Queue  │ │ Bewerbungen │ │Einstellungen │    │
-│  │+ Stellen-│ │+ book- │ │  (tracker)  │ │(style examples│   │
-│  │ Übersicht│ │marklet │ │             │ │  + AI rules) │    │
-│  └──────────┘ └────────┘ └─────────────┘ └──────────────┘    │
+│  ┌────────┐ ┌──────┐ ┌──────┐ ┌──────────┐ ┌────────────┐    │
+│  │Generat.│ │Queue │ │Profil│ │Bewerbung.│ │ Statistik  │    │
+│  │+ Stel- │ │+book-│ │+CV   │ │ (tracker │ │ (funnel +  │    │
+│  │ lenübs.│ │marklt│ │+style│ │  +snap-  │ │  stage-    │    │
+│  │        │ │      │ │rules │ │   shots) │ │  time avg) │    │
+│  └────────┘ └──────┘ └──────┘ └──────────┘ └────────────┘    │
 └────────────────────────────┬─────────────────────────────────┘
                              │ /generate, /applications, /queue,
                              │ /settings, /analyze-style, /chat …
@@ -245,6 +301,41 @@ It moves your applications into `data/cvcreater.db` and renames the source
 to `applications.json.bak` (kept indefinitely as a safety net — delete
 manually whenever you trust the migration).
 
+### Demo mode for screencasts and live demos
+
+There are two ways to serve the bundled Max-Mustermann demo instead of your
+real data. They solve slightly different problems — pick whichever fits:
+
+**Option A — `DEMO_MODE=1` (recommended for most cases).** Add to `.env`,
+restart the app, done. The app reads from an isolated workspace at
+`data/.demo/` that's seeded once from [`examples/demo/`](examples/demo/).
+Your real `data/` and `config/cv_personal.json` are **never touched**, so
+toggling back is just removing the env var and restarting. Demo edits
+persist across restarts (within the demo workspace) so you can prepare
+your screencast state once and replay it.
+
+```env
+DEMO_MODE=1
+```
+
+The header shows an orange **DEMO** badge while this mode is on so you
+can't forget you're not on real data. To wipe the demo workspace and
+re-seed it fresh, delete `data/.demo/` and restart.
+
+**Option B — physical file swap via `swap_profile.py`.** Use this when
+you want git-visible profile state, or when running offline tooling
+(scripts/manual edits) against the demo data.
+
+```bash
+python3 scripts/swap_profile.py demo      # swap in demo, back up your real data
+python3 scripts/swap_profile.py mine      # restore your real data
+python3 scripts/swap_profile.py status    # show current owner
+```
+
+Real files are moved to `data/.mine_backup/` while demo is active; `mine`
+restores them bit-for-bit. The script refuses to run while `DEMO_MODE=1`
+is set, so the two modes don't fight each other.
+
 ---
 
 ## Roadmap
@@ -279,8 +370,12 @@ CVCreater/
 │   ├── projects.json
 │   └── settings.json
 ├── examples/                 # Demo profile/projects (fictional)
+│   └── demo/                 # Max-Mustermann demo (used by swap_profile.py)
 ├── scripts/
-│   └── migrate_applications_to_sqlite.py
+│   ├── migrate_applications_to_sqlite.py   # one-shot: applications.json → SQLite
+│   ├── backfill_stage_history.py           # synthesize missing earlier stage_events
+│   ├── reseed_demo_db.py                   # rebuild data/.demo/cvcreater.db from JSON
+│   └── swap_profile.py                     # swap live ↔ demo data with backup/restore
 └── docs/
     └── JOURNAL.md            # Development log (idea → decision → outcome)
 ```
