@@ -680,7 +680,14 @@ def _render_projects(projects_content: list, all_projects: list, language: str =
         title = (item.get("title") if isinstance(item, dict) else None) or p["title"]
         desc  = (item.get("description") if isinstance(item, dict) else None) or p["description"]
         grade = f" ({grade_label}: {p['grade']})" if p.get("grade") else ""
-        items.append(f"<li><strong>{title}{grade}</strong>: {desc}</li>")
+        link_html = ""
+        if p.get("link"):
+            # Strip protocol for display ("github.com/..." reads cleaner on a CV
+            # than the full https URL), but keep the full URL in href so the
+            # link still works when the rendered HTML is exported / printed.
+            display = re.sub(r"^https?://", "", p["link"]).rstrip("/")
+            link_html = f' (<a href="{p["link"]}" target="_blank" rel="noopener noreferrer">{display}</a>)'
+        items.append(f"<li><strong>{title}{grade}</strong>: {desc}{link_html}</li>")
     return "\n".join(items)
 
 

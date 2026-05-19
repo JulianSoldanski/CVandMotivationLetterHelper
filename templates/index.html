@@ -2334,9 +2334,13 @@
       return `<li>${esc(e.degree || entry.degree || '')}${inst}</li>`;
     }).join('');
 
-    const projsHtml = (cv.projects || []).map(p =>
-      `<li><strong>${esc(p.title || '')}</strong>${p.description ? ': ' + esc(p.description) : ''}</li>`
-    ).join('');
+    const projsHtml = (cv.projects || []).map(p => {
+      const proj = projects.find(x => x.id === p.id);
+      const linkHtml = proj && proj.link
+        ? ` (<a href="${esc(proj.link)}" target="_blank" rel="noopener noreferrer">${esc(proj.link.replace(/^https?:\/\//, '').replace(/\/$/, ''))}</a>)`
+        : '';
+      return `<li><strong>${esc(p.title || '')}</strong>${p.description ? ': ' + esc(p.description) : ''}${linkHtml}</li>`;
+    }).join('');
 
     const skillsHtml = Object.entries(cv.skills || {}).map(([cat, val]) =>
       `<div class="cv-snap-skill"><strong>${esc(cat)}:</strong> ${esc(val)}</div>`
