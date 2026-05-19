@@ -34,11 +34,23 @@ GEMINI_API_KEY=dein_key_hier
 cp config/cv_personal.example.json config/cv_personal.json
 ```
 
-`config/cv_personal.json` bearbeiten: Name, Adresse, Telefon, E-Mail, `candidate_base` für den LLM-Kontext. Die Datei ist in `.gitignore` vorgesehen.
+`config/cv_personal.json` bearbeiten: **Name, Adresse, Telefon und E-Mail im Lebenslauf/Anschreiben-Kopf** kommen nur aus dieser Datei – nicht aus `profile.json`. Nach Änderungen einmal **neu generieren** (Beide / Nur CV / Nur Anschreiben), damit die Vorschau den neuen Kopf zeigt.
+
+Die Datei ist in `.gitignore` vorgesehen; Änderungen werden ohne Server-Neustart übernommen.
 
 ### 3. Profil & Projekte
 
-Die App liest `data/profile.json` und `data/projects.json`. Fehlen die Dateien, startet die App mit leeren Listen; beim Speichern über die UI sollte der Ordner `data/` existieren (falls nötig: `mkdir -p data`).
+Die App liest `data/profile.json` und `data/projects.json`. Fehlen die Dateien, startet die App mit leeren Listen.
+
+**Demo-Daten (fiktiv: Max Mustermann)** – ins Arbeitsverzeichnis kopieren:
+
+```bash
+mkdir -p data
+cp examples/profile.example.json data/profile.json
+cp examples/projects.example.json data/projects.json
+```
+
+Die Beispiele liegen versioniert unter `examples/`; der Ordner `data/` ist in `.gitignore`, damit dein echtes Profil nicht ins Repo rutscht.
 
 ## Starten
 

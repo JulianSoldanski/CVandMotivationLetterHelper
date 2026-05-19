@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import json
 import os
-from functools import lru_cache
 
 _BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PERSONAL_FILE = os.path.join(_BASE_DIR, "config", "cv_personal.json")
 EXAMPLE_FILE = os.path.join(_BASE_DIR, "config", "cv_personal.example.json")
+
+_raw_cache: dict | None = None
+_raw_mtime: float | None = None
 
 
 def _personal_missing_message() -> str:
@@ -21,16 +23,24 @@ def _personal_missing_message() -> str:
     return f"Persönliche Konfiguration fehlt: {PERSONAL_FILE}.{hint}"
 
 
-@lru_cache(maxsize=1)
 def _load_raw() -> dict:
+    """Reload from disk when cv_personal.json changes (mtime), so edits apply without server restart."""
+    global _raw_cache, _raw_mtime
     if not os.path.isfile(PERSONAL_FILE):
         raise FileNotFoundError(_personal_missing_message())
+    mtime = os.path.getmtime(PERSONAL_FILE)
+    if _raw_cache is not None and _raw_mtime == mtime:
+        return _raw_cache
     with open(PERSONAL_FILE, "r", encoding="utf-8") as f:
-        return json.load(f)
+        _raw_cache = json.load(f)
+    _raw_mtime = mtime
+    return _raw_cache
 
 
 def reload_personal_config() -> None:
-    _load_raw.cache_clear()
+    global _raw_cache, _raw_mtime
+    _raw_cache = None
+    _raw_mtime = None
 
 
 def get_candidate_base() -> str:

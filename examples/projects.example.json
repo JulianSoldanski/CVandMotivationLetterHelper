@@ -1,0 +1,26 @@
+[
+  {
+    "id": "mm-proj-hackathon",
+    "title": "2. Platz – interner Hochschul-Hackathon (Musterstadt)",
+    "description": "Innerhalb von 24 Stunden mit einem Team von vier Personen einen MVP für eine Campus-Carsharing-Idee umgesetzt (Python, SQLite, einfaches Web-Frontend). Pitch vor Fachjury.",
+    "tags": ["hackathon", "teamwork", "python", "pitch"],
+    "grade": null,
+    "visible": true
+  },
+  {
+    "id": "mm-proj-seminar",
+    "title": "Seminarprojekt – Datenvisualisierung im öffentlichen Verkehr",
+    "description": "Aufbereitung offener Fahrplandaten und Erstellung interaktiver Diagramme mit Python (pandas, Plotly). Kurzbericht und Repo-Abgabe im Kurs „Data Literacy“.",
+    "tags": ["data", "python", "visualization"],
+    "grade": "1.3",
+    "visible": true
+  },
+  {
+    "id": "mm-proj-thesis",
+    "title": "Bachelorarbeit – Reservierungssystem für Lernräume",
+    "description": "Anforderungsanalyse mit Stakeholder-Interviews, Entwurf der Datenbank und Implementierung eines funktionalen Web-Prototyps. Fokus auf Usability und klare Rollen (Admin vs. Nutzer).",
+    "tags": ["web", "sql", "requirements", "prototype"],
+    "grade": "2.0",
+    "visible": true
+  }
+]

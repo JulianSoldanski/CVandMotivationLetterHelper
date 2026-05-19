@@ -8,10 +8,11 @@ from flask import Flask, render_template, request, jsonify
 from google import genai
 from google.genai import types
 from dotenv import load_dotenv
-from datetime import date
+from datetime import date, datetime
 
 from cv_layouts import ANSCHREIBEN_HTML_STYLE, LAYOUTS
 from personal_config import get_candidate_base, get_contact, sender_address_html
+import db
 
 load_dotenv()
 
@@ -20,6 +21,18 @@ app = Flask(__name__)
 GEMINI_MODEL      = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 PROJECTS_FILE     = os.path.join(os.path.dirname(__file__), "data", "projects.json")
 PROFILE_FILE      = os.path.join(os.path.dirname(__file__), "data", "profile.json")
+APPLICATIONS_FILE = os.path.join(os.path.dirname(__file__), "data", "applications.json")
+SETTINGS_FILE     = os.path.join(os.path.dirname(__file__), "data", "settings.json")
+
+db.init_schema()
+APPLICATION_STAGES = [
+    "documents_created",
+    "application_sent",
+    "interview_1",
+    "interview_2",
+    "interview_3",
+    "rejected",
+]
 CV_DIR            = os.path.join(os.path.dirname(__file__), "cvs")
 ANSCHREIBEN_DIR   = os.path.join(os.path.dirname(__file__), "anschreiben")
 os.makedirs(CV_DIR, exist_ok=True)
@@ -39,6 +52,123 @@ def load_projects() -> list:
 def save_projects(projects: list):
     with open(PROJECTS_FILE, "w", encoding="utf-8") as f:
         json.dump(projects, f, ensure_ascii=False, indent=2)
+
+
+def load_settings() -> dict:
+    defaults = {
+        "style_examples": {"de": "", "en": ""},
+        "style_analysis": {"de": "", "en": ""},
+    }
+    try:
+        with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return defaults
+    for field in ("style_examples", "style_analysis"):
+        if not isinstance(data.get(field), dict):
+            data[field] = {"de": "", "en": ""}
+        for k in ("de", "en"):
+            if not isinstance(data[field].get(k), str):
+                data[field][k] = ""
+    return data
+
+
+def save_settings(settings: dict):
+    os.makedirs(os.path.dirname(SETTINGS_FILE), exist_ok=True)
+    with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
+        json.dump(settings, f, ensure_ascii=False, indent=2)
+
+
+def _now_iso() -> str:
+    return datetime.now().isoformat(timespec="seconds")
+
+
+def _today_iso() -> str:
+    return date.today().isoformat()
+
+
+def load_applications() -> list:
+    return db.list_applications()
+
+
+def get_application(app_id: str) -> dict | None:
+    return db.get_application(app_id)
+
+
+def apply_stage_transition(entry: dict, new_stage: str):
+    """Apply a stage transition to an in-memory entry dict.
+
+    Mutates entry["stage"], entry["stage_history"], and entry["applied_at"].
+    Caller is responsible for persisting via db.upsert_application + db.append_stage_event.
+    Returns the new event dict if a transition happened, else None.
+    """
+    history = entry.setdefault("stage_history", [])
+    if history and history[-1]["stage"] == new_stage:
+        return None
+    event = {"stage": new_stage, "at": _now_iso()}
+    history.append(event)
+    entry["stage"] = new_stage
+    if new_stage == "application_sent" and not entry.get("applied_at"):
+        entry["applied_at"] = _today_iso()
+    return event
+
+
+def log_application(
+    company: str,
+    position: str,
+    job_posting: str = "",
+    cv_content: dict | None = None,
+    anschreiben_content: dict | None = None,
+    layout_used: str | None = None,
+    language: str | None = None,
+) -> dict | None:
+    """Create or refresh an application entry from a generate event.
+
+    Dedupes by (company, position) case-insensitively so multiple generate
+    clicks for the same opening don't spawn duplicates. Stores the generated
+    CV/Anschreiben content snapshot when provided.
+    """
+    company  = (company or "").strip()
+    position = (position or "").strip()
+    if not company and not position:
+        return None
+
+    existing = db.find_application_by_company_position(company, position)
+    now = _now_iso()
+    if existing:
+        existing["updated_at"] = now
+        if job_posting:
+            existing["job_posting"] = job_posting[:4000]
+        if cv_content is not None:
+            existing["cv_content"] = cv_content
+        if anschreiben_content is not None:
+            existing["anschreiben_content"] = anschreiben_content
+        if layout_used:
+            existing["layout_used"] = layout_used
+        if language:
+            existing["language"] = language
+        db.upsert_application(existing)
+        return existing
+
+    entry = {
+        "id":                  str(uuid.uuid4())[:8],
+        "company":             company,
+        "position":            position,
+        "stage":               "documents_created",
+        "stage_history":       [{"stage": "documents_created", "at": now}],
+        "applied_at":          None,
+        "feedback":            "",
+        "job_posting":         job_posting[:4000] if job_posting else "",
+        "cv_content":          cv_content,
+        "anschreiben_content": anschreiben_content,
+        "layout_used":         layout_used,
+        "language":            language,
+        "created_at":          now,
+        "updated_at":          now,
+    }
+    db.upsert_application(entry)
+    db.append_stage_event(entry["id"], "documents_created", now)
+    return entry
 
 
 def load_profile() -> dict:
@@ -297,6 +427,36 @@ Regeln:
     return _call_gemini_json(prompt, 4096)
 
 
+def generate_job_summary(job_posting: str, language: str) -> dict:
+    lang = "auf Deutsch" if language == "de" else "in English"
+    prompt = f"""Analysiere die folgende Stellenausschreibung und gib eine kompakte Zusammenfassung {lang} zurück.
+
+STELLENAUSSCHREIBUNG:
+{job_posting[:8000]}
+
+Gib ein JSON-Objekt zurück mit exakt dieser Struktur:
+{{
+  "company_does": "2-3 Sätze: Was macht das Unternehmen? Branche, Produkt, Mission.",
+  "searching_for": [
+    "Stichpunkt 1: konkrete Anforderung an den Bewerber",
+    "Stichpunkt 2: ...",
+    "Stichpunkt 3: ..."
+  ],
+  "technologies": [
+    "Technologie/Tool 1",
+    "Technologie/Tool 2"
+  ]
+}}
+
+Regeln:
+- 4-7 Stichpunkte für "searching_for" (Verantwortlichkeiten, Skills, Erfahrung, Soft Skills)
+- "technologies": NUR konkrete Technologien, Frameworks, Sprachen, Tools — keine Soft Skills. Leere Liste falls keine genannt.
+- Wenn das Unternehmen nicht beschrieben ist: best-guess auf Basis von Position/Branche, sonst "Nicht in der Ausschreibung beschrieben."
+- Keine Floskeln, keine Wiederholungen
+"""
+    return _call_gemini_json(prompt, 1024)
+
+
 def generate_anschreiben_content(
     job_posting: str, company: str, position: str,
     contact: str, city: str, language: str,
@@ -309,9 +469,27 @@ def generate_anschreiben_content(
     notes_block = f"\nEIGENE HINWEISE (unbedingt einarbeiten):\n{custom_notes}\n" if custom_notes.strip() else ""
     profile_text = profile_to_text(load_profile())
 
+    settings_data  = load_settings()
+    style_analysis = (settings_data.get("style_analysis", {}).get(language) or "").strip()
+    style_example  = (settings_data.get("style_examples", {}).get(language) or "").strip()
+    style_block = ""
+    if style_analysis:
+        style_block = (
+            "\nSTIL-VORGABE DES BEWERBERS (befolge diese Stilrichtlinien strikt — sie destillieren, "
+            "wie der Bewerber selbst schreibt):\n"
+            f"{style_analysis[:4000]}\n"
+        )
+    elif style_example:
+        style_block = (
+            "\nSTIL-BEISPIEL DES BEWERBERS (orientiere dich an Tonfall, Satzlänge, "
+            "Wortwahl und Rhythmus — übernimm aber KEINE Inhalte oder konkreten Formulierungen "
+            "wörtlich, da es sich um ein anderes Anschreiben handelt):\n"
+            f"\"\"\"\n{style_example[:6000]}\n\"\"\"\n"
+        )
+
     applicant = get_contact()["full_name"]
     prompt = f"""Du bist ein professioneller Bewerbungsschreiber. Erstelle strukturierten Inhalt {lang} für das Anschreiben von {applicant}.
-
+{style_block}
 PROFIL DES BEWERBERS:
 {profile_text}
 
@@ -693,7 +871,7 @@ def generate():
     resolved_layout = pick_layout(job_posting, company, position, layout)
 
     projects = load_projects()
-    result   = {"layout_used": resolved_layout}
+    result   = {"layout_used": resolved_layout, "job_posting": job_posting}
 
     try:
         if doc_type in ("cv", "both"):
@@ -705,8 +883,19 @@ def generate():
                 job_posting, company, position, contact, city, language, custom_notes, projects,
                 company_address=company_address
             )
+        result["job_summary"] = generate_job_summary(job_posting, language)
     except Exception as e:
         return jsonify({"error": f"Gemini-Fehler: {str(e)}"}), 500
+
+    logged = log_application(
+        company, position, job_posting,
+        cv_content          = result.get("cv_content"),
+        anschreiben_content = result.get("anschreiben_content"),
+        layout_used         = resolved_layout,
+        language            = language,
+    )
+    if logged:
+        result["application"] = logged
 
     return jsonify(result)
 
@@ -1024,6 +1213,144 @@ def delete_project(project_id):
     if len(new_list) == len(projects):
         return jsonify({"error": "Projekt nicht gefunden."}), 404
     save_projects(new_list)
+    return jsonify({"ok": True})
+
+
+@app.route("/settings", methods=["GET"])
+def get_settings():
+    return jsonify(load_settings())
+
+
+@app.route("/settings", methods=["PUT"])
+def update_settings():
+    data     = request.json or {}
+    settings = load_settings()
+    for field in ("style_examples", "style_analysis"):
+        block = data.get(field)
+        if isinstance(block, dict):
+            for k in ("de", "en"):
+                if k in block:
+                    settings[field][k] = (block[k] or "").strip()
+    save_settings(settings)
+    return jsonify(settings)
+
+
+@app.route("/analyze-style", methods=["POST"])
+def analyze_style():
+    if not os.environ.get("GEMINI_API_KEY"):
+        return jsonify({"error": "GEMINI_API_KEY nicht gesetzt."}), 500
+    data     = request.json or {}
+    example  = (data.get("example") or "").strip()
+    language = data.get("language") or "de"
+    if not example:
+        return jsonify({"error": "Beispiel-Text ist leer."}), 400
+    if language not in ("de", "en"):
+        return jsonify({"error": "Sprache muss 'de' oder 'en' sein."}), 400
+
+    lang_label = "auf Deutsch" if language == "de" else "in English"
+    prompt = f"""Analysiere den Schreibstil des folgenden Beispiel-Anschreibens und beschreibe ihn {lang_label} so präzise, dass eine andere KI diesen Stil später nachahmen kann — ohne die Inhalte zu übernehmen.
+
+BEISPIEL-TEXT:
+\"\"\"
+{example[:6000]}
+\"\"\"
+
+Gib 6–10 Stichpunkte zurück, die folgende Aspekte abdecken (sofern erkennbar):
+- Tonfall (formell ↔ locker, direkt ↔ zurückhaltend, selbstbewusst ↔ bescheiden)
+- Satzbau (Länge, Aktiv/Passiv, parataktisch/hypotaktisch)
+- Wortwahl (Fachsprache, Anglizismen, branchenspezifische Begriffe, bewusst gemiedene Floskeln)
+- Strukturmuster (Einstieg, Argumentationslogik, Abschluss)
+- Wiederkehrende rhetorische Mittel oder Eigenheiten
+
+Format: reine Markdown-Bullet-Liste (\"- …\"), kein Vor- oder Nachwort, keine Anrede an mich.
+"""
+    try:
+        analysis = call_gemini(prompt, 1024).strip()
+        return jsonify({"analysis": analysis})
+    except Exception as e:
+        return jsonify({"error": f"Gemini-Fehler: {str(e)}"}), 500
+
+
+@app.route("/applications", methods=["GET"])
+def list_applications():
+    return jsonify(load_applications())
+
+
+@app.route("/applications/<app_id>", methods=["GET"])
+def fetch_application(app_id):
+    a = db.get_application(app_id)
+    if not a:
+        return jsonify({"error": "Bewerbung nicht gefunden."}), 404
+    return jsonify(a)
+
+
+@app.route("/applications", methods=["POST"])
+def create_application():
+    data     = request.json or {}
+    company  = (data.get("company") or "").strip()
+    position = (data.get("position") or "").strip()
+    if not company and not position:
+        return jsonify({"error": "Unternehmen oder Position erforderlich."}), 400
+    stage = data.get("stage") or "documents_created"
+    if stage not in APPLICATION_STAGES:
+        return jsonify({"error": "Ungültige Stage."}), 400
+
+    now = _now_iso()
+    applied_at = (data.get("applied_at") or "").strip() or None
+    if not applied_at:
+        sent_idx = APPLICATION_STAGES.index("application_sent")
+        if APPLICATION_STAGES.index(stage) >= sent_idx:
+            applied_at = _today_iso()
+    entry = {
+        "id":            str(uuid.uuid4())[:8],
+        "company":       company,
+        "position":      position,
+        "stage":         stage,
+        "stage_history": [{"stage": stage, "at": now}],
+        "applied_at":    applied_at,
+        "feedback":      (data.get("feedback") or "").strip(),
+        "job_posting":   (data.get("job_posting") or "")[:4000],
+        "created_at":    now,
+        "updated_at":    now,
+    }
+    db.upsert_application(entry)
+    db.append_stage_event(entry["id"], stage, now)
+    return jsonify(entry), 201
+
+
+@app.route("/applications/<app_id>", methods=["PUT"])
+def update_application(app_id):
+    data = request.json or {}
+    a = db.get_application(app_id)
+    if not a:
+        return jsonify({"error": "Bewerbung nicht gefunden."}), 404
+
+    new_event = None
+    if "company" in data:
+        a["company"] = (data.get("company") or "").strip()
+    if "position" in data:
+        a["position"] = (data.get("position") or "").strip()
+    if "stage" in data:
+        if data["stage"] not in APPLICATION_STAGES:
+            return jsonify({"error": "Ungültige Stage."}), 400
+        new_event = apply_stage_transition(a, data["stage"])
+    if "feedback" in data:
+        a["feedback"] = data.get("feedback") or ""
+    if "applied_at" in data:
+        v = (data.get("applied_at") or "").strip()
+        a["applied_at"] = v or None
+    a["updated_at"] = _now_iso()
+
+    db.upsert_application(a)
+    if new_event:
+        db.append_stage_event(a["id"], new_event["stage"], new_event["at"])
+    return jsonify(a)
+
+
+@app.route("/applications/<app_id>", methods=["DELETE"])
+def delete_application_route(app_id):
+    if not db.delete_application(app_id):
+        return jsonify({"error": "Bewerbung nicht gefunden."}), 404
     return jsonify({"ok": True})
 
 

@@ -16,6 +16,20 @@
   header h1 { font-size:1.15rem; font-weight:700; }
   header span { font-size:0.78rem; color:#aaa; }
 
+  .view-nav { margin-left:auto; display:flex; gap:0.4rem; }
+  .view-btn {
+    background:transparent; border:1px solid transparent; border-radius:6px;
+    padding:0.4rem 0.85rem; font-size:0.83rem; font-weight:600; color:#888; cursor:pointer;
+    transition:all .15s; display:inline-flex; align-items:center; gap:0.4rem;
+  }
+  .view-btn:hover { color:#4B5D67; background:#f5f6f8; }
+  .view-btn.active { color:#4B5D67; background:#eef3f5; border-color:#d8e2e6; }
+  .view-badge {
+    font-size:0.66rem; background:#4B5D67; color:#fff; border-radius:10px;
+    padding:0.05rem 0.4rem; font-weight:700; min-width:18px; text-align:center;
+  }
+  .view-btn:not(.active) .view-badge { background:#ccc; }
+
   .main-layout { display:grid; grid-template-columns:390px 1fr; height:calc(100vh - 50px); }
 
   /* LEFT */
@@ -285,6 +299,186 @@
   }
   .chat-send:hover { background:#3a4a52; }
   .chat-send:disabled { background:#aaa; cursor:not-allowed; }
+
+  /* Applications view */
+  #applicationsView { height:calc(100vh - 50px); overflow-y:auto; background:#f0f2f5; }
+  .apps-wrap { max-width:880px; margin:0 auto; padding:2rem 1.5rem 3rem; }
+  .apps-toolbar { display:flex; align-items:flex-end; justify-content:space-between; gap:1rem; margin-bottom:1.4rem; }
+  .apps-title { font-size:1.4rem; font-weight:700; color:#2c3e50; }
+  .apps-sub { font-size:0.85rem; color:#888; margin-top:0.2rem; }
+  .apps-add-btn {
+    background:#4B5D67; color:#fff; border:none; border-radius:8px;
+    padding:0.55rem 1.05rem; font-size:0.85rem; font-weight:600; cursor:pointer;
+    transition:background .15s;
+  }
+  .apps-add-btn:hover { background:#3a4a52; }
+  .apps-empty {
+    background:#fff; border:1px dashed #ddd; border-radius:10px;
+    padding:2.5rem 1.5rem; text-align:center; color:#999; font-size:0.9rem;
+  }
+  .apps-list { display:flex; flex-direction:column; gap:0.9rem; }
+  .app-card {
+    background:#fff; border:1px solid #e3e6ea; border-radius:10px;
+    padding:1.1rem 1.3rem; box-shadow:0 1px 3px rgba(0,0,0,.04);
+  }
+  .app-card-header {
+    display:flex; align-items:flex-start; justify-content:space-between;
+    gap:1rem; margin-bottom:0.85rem;
+  }
+  .app-card-title { font-size:0.95rem; font-weight:700; color:#2c3e50; }
+  .app-card-pos { color:#666; font-weight:500; }
+  .app-card-date { font-size:0.74rem; color:#999; white-space:nowrap; padding-top:0.15rem; }
+  .app-meta { display:flex; flex-wrap:wrap; gap:0.4rem; margin-bottom:0.4rem; }
+  .app-meta-pill {
+    background:#f5f6f8; color:#4B5D67; border:1px solid #e3e6ea;
+    border-radius:12px; padding:0.18rem 0.55rem; font-size:0.72rem; font-weight:600;
+  }
+  .app-meta-pill.rejected { background:#fdecea; color:#c0392b; border-color:#f5c6c0; }
+
+  .app-card.rejected { border-left:4px solid #c0392b; background:#fdfafa; }
+  .app-card.rejected .app-card-title { color:#7a5959; }
+  .app-card.rejected .stepper { opacity:0.55; }
+
+  .app-actions .action-btn.reject { color:#c0392b; }
+  .app-actions .action-btn.reject:hover { background:#fdecea; }
+
+  /* Stepper */
+  .stepper { display:flex; align-items:flex-start; margin:0.4rem 0 1rem; }
+  .step { display:flex; flex-direction:column; align-items:center; cursor:pointer; min-width:64px; }
+  .step-circle {
+    width:28px; height:28px; border-radius:50%; background:#e3e6ea; color:#888;
+    display:flex; align-items:center; justify-content:center; font-size:0.78rem; font-weight:700;
+    border:2px solid #e3e6ea; transition:all .15s;
+  }
+  .step.completed .step-circle { background:#4B5D67; border-color:#4B5D67; color:#fff; }
+  .step.current .step-circle {
+    background:#fff; border-color:#4B5D67; color:#4B5D67;
+    box-shadow:0 0 0 3px rgba(75,93,103,.15);
+  }
+  .step:hover .step-circle { border-color:#4B5D67; }
+  .step-label { font-size:0.7rem; color:#888; margin-top:0.4rem; text-align:center; line-height:1.2; }
+  .step.completed .step-label, .step.current .step-label { color:#4B5D67; font-weight:600; }
+  .step-line { flex:1; height:2px; background:#e3e6ea; margin:14px 0.1rem 0; min-width:18px; }
+  .step-line.completed { background:#4B5D67; }
+
+  /* CV / Anschreiben snapshot expanders */
+  .cv-snap-details {
+    margin: 0.4rem 0 0.6rem;
+    border: 1px solid #e3e6ea;
+    border-radius: 6px;
+    background: #fafbfc;
+  }
+  .cv-snap-details summary {
+    cursor: pointer; user-select: none;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.78rem; font-weight: 600; color: #4B5D67;
+    list-style: none;
+  }
+  .cv-snap-details summary::-webkit-details-marker { display: none; }
+  .cv-snap-details summary::before { content: "▸ "; display: inline-block; transition: transform .15s; }
+  .cv-snap-details[open] summary::before { content: "▾ "; }
+  .cv-snap-details summary:hover { color: #2c3e50; }
+  .cv-snap-meta { font-weight: 400; color: #999; font-size: 0.72rem; margin-left: 0.5rem; }
+  .cv-snap {
+    padding: 0.3rem 0.85rem 0.75rem;
+    border-top: 1px solid #eee;
+    font-size: 0.82rem; color: #2c3e50; line-height: 1.5;
+  }
+  .cv-snap-section { margin-top: 0.7rem; }
+  .cv-snap-section:first-child { margin-top: 0.5rem; }
+  .cv-snap-title {
+    font-size: 0.7rem; font-weight: 700; color: #888; text-transform: uppercase;
+    letter-spacing: 0.05em; margin-bottom: 0.35rem;
+  }
+  .cv-snap-profile { font-style: italic; color: #555; }
+  .cv-snap-exp { margin-bottom: 0.55rem; }
+  .cv-snap-exp ul, .cv-snap ul { margin: 0.2rem 0 0 1.1rem; padding: 0; }
+  .cv-snap-exp li, .cv-snap li { margin-bottom: 0.15rem; }
+  .cv-snap-skill { margin-bottom: 0.18rem; font-size: 0.8rem; }
+  .cv-snap-subject { font-weight: 600; margin-bottom: 0.3rem; }
+  .cv-snap p { margin-bottom: 0.45rem; }
+
+  .app-feedback {
+    width:100%; min-height:60px; resize:vertical; border:1px solid #ddd; border-radius:6px;
+    padding:0.55rem 0.7rem; font-size:0.83rem; font-family:inherit; line-height:1.5; outline:none;
+    transition:border-color .15s;
+  }
+  .app-feedback:focus { border-color:#4B5D67; }
+  .app-actions { display:flex; gap:0.5rem; justify-content:flex-end; margin-top:0.6rem; }
+  .app-actions .action-btn {
+    background:#f5f6f8; color:#4B5D67; border:1px solid #e3e6ea; border-radius:6px;
+    padding:0.35rem 0.8rem; font-size:0.78rem; font-weight:600; cursor:pointer;
+    transition:all .15s;
+  }
+  .app-actions .action-btn:hover { background:#eef3f5; }
+  .app-actions .action-btn.primary { background:#4B5D67; color:#fff; border-color:#4B5D67; }
+  .app-actions .action-btn.primary:hover { background:#3a4a52; }
+  .app-actions .action-btn.danger { color:#c0392b; }
+  .app-actions .action-btn.danger:hover { background:#fdecea; }
+  .app-actions .feedback-saved { font-size:0.74rem; color:#28a745; align-self:center; margin-right:auto; opacity:0; transition:opacity .2s; }
+  .app-actions .feedback-saved.show { opacity:1; }
+
+  /* Settings view */
+  #settingsView { height:calc(100vh - 50px); overflow-y:auto; background:#f0f2f5; }
+  .settings-wrap { max-width:1100px; margin:0 auto; padding:2rem 1.5rem 3rem; }
+  .settings-grid { display:grid; grid-template-columns:1fr 1fr; gap:1.1rem; }
+  .settings-card {
+    background:#fff; border:1px solid #e3e6ea; border-radius:10px;
+    padding:1.1rem 1.3rem; box-shadow:0 1px 3px rgba(0,0,0,.04);
+    display:flex; flex-direction:column;
+  }
+  .settings-card-title { font-size:0.92rem; font-weight:700; color:#2c3e50; margin-bottom:0.25rem; }
+  .settings-card-hint { font-size:0.78rem; color:#888; margin-bottom:0.7rem; line-height:1.45; }
+  .settings-card textarea {
+    width:100%; resize:vertical; border:1px solid #ddd; border-radius:6px;
+    padding:0.65rem 0.8rem; font-size:0.84rem; font-family:inherit; line-height:1.55;
+    outline:none; transition:border-color .15s; min-height:160px;
+  }
+  .settings-card textarea:focus { border-color:#4B5D67; }
+  .settings-sublabel {
+    display:block; font-size:0.72rem; font-weight:700; color:#4B5D67;
+    text-transform:uppercase; letter-spacing:0.05em; margin:0.6rem 0 0.3rem;
+  }
+  .settings-sublabel .opt { font-weight:400; color:#999; text-transform:none; letter-spacing:0; }
+  .settings-actions-row {
+    display:flex; align-items:center; justify-content:space-between;
+    gap:0.6rem; margin-top:0.45rem;
+  }
+  .settings-actions-row .action-btn {
+    background:#4B5D67; color:#fff; border:1px solid #4B5D67; border-radius:6px;
+    padding:0.4rem 0.85rem; font-size:0.78rem; font-weight:600; cursor:pointer;
+    transition:background .15s;
+  }
+  .settings-actions-row .action-btn:hover:not(:disabled) { background:#3a4a52; }
+  .settings-actions-row .action-btn:disabled { background:#aaa; border-color:#aaa; cursor:not-allowed; }
+  .settings-meta { font-size:0.72rem; color:#aaa; }
+  .settings-status { margin-top:1rem; font-size:0.82rem; color:#28a745; opacity:0; transition:opacity .2s; }
+  .settings-status.show { opacity:1; }
+  .settings-status.error { color:#c0392b; }
+
+  @media (max-width: 820px) {
+    .settings-grid { grid-template-columns:1fr; }
+  }
+
+  /* Stellen-Übersicht (left panel) */
+  .stelle-summary { display:flex; flex-direction:column; gap:0.55rem; margin-bottom:0.6rem; }
+  .stelle-card { background:#fff; border:1px solid #e3e6ea; border-radius:7px; padding:0.55rem 0.7rem; }
+  .stelle-card-title { font-size:0.72rem; font-weight:700; color:#4B5D67; margin-bottom:0.3rem; letter-spacing:0.01em; }
+  .stelle-card-body { font-size:0.78rem; color:#2c3e50; line-height:1.45; }
+  .stelle-list { margin:0; padding-left:0.95rem; font-size:0.78rem; color:#2c3e50; line-height:1.5; }
+  .stelle-list li { margin-bottom:0.18rem; }
+  .stelle-tech { display:flex; flex-wrap:wrap; gap:0.28rem; }
+  .stelle-tech-tag { background:#eef3f5; color:#4B5D67; border:1px solid #d8e2e6; border-radius:12px; padding:0.16rem 0.55rem; font-size:0.7rem; font-weight:600; }
+  .stelle-tech-empty { font-size:0.75rem; color:#999; font-style:italic; }
+  .stelle-source-details { font-size:0.74rem; }
+  .stelle-source-details summary { cursor:pointer; color:#4B5D67; font-weight:600; padding:0.25rem 0; user-select:none; }
+  .stelle-source-details summary:hover { color:#2c3e50; }
+  .stelle-source-body {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size:0.7rem; color:#555; line-height:1.5; white-space:pre-wrap; word-break:break-word;
+    margin:0.35rem 0 0; max-height:260px; overflow-y:auto;
+    background:#fafafa; border:1px solid #eee; border-radius:6px; padding:0.5rem 0.6rem;
+  }
 </style>
 </head>
 <body>
@@ -298,9 +492,14 @@
   </svg>
   <h1>CV & Anschreiben Generator</h1>
   <span>Gemini Flash</span>
+  <nav class="view-nav">
+    <button class="view-btn active" id="navGenerator" onclick="showView('generator')">Generator</button>
+    <button class="view-btn" id="navApplications" onclick="showView('applications')">Bewerbungen <span class="view-badge" id="appsCountBadge">0</span></button>
+    <button class="view-btn" id="navSettings" onclick="showView('settings')">⚙️ Einstellungen</button>
+  </nav>
 </header>
 
-<div class="main-layout">
+<div class="main-layout" id="generatorView">
 
   <!-- LEFT PANEL -->
   <div class="left-panel">
@@ -325,6 +524,29 @@
         <div style="margin-top:0.4rem">
           <textarea id="job_posting_url" rows="5" placeholder="Text wird hier geladen…" readonly style="font-size:0.78rem;color:#888;background:#f8f8f8"></textarea>
         </div>
+      </div>
+
+      <div class="job-overview" id="jobOverview" style="display:none">
+        <hr class="div">
+        <span class="slabel">Stellen-Übersicht</span>
+        <div class="stelle-summary">
+          <div class="stelle-card">
+            <div class="stelle-card-title">🏢 Was sie machen</div>
+            <div class="stelle-card-body" id="stelleDoes"></div>
+          </div>
+          <div class="stelle-card">
+            <div class="stelle-card-title">🎯 Was sie suchen</div>
+            <ul class="stelle-list" id="stelleWants"></ul>
+          </div>
+          <div class="stelle-card">
+            <div class="stelle-card-title">⚙️ Technologien</div>
+            <div class="stelle-tech" id="stelleTech"></div>
+          </div>
+        </div>
+        <details class="stelle-source-details">
+          <summary>Originaltext anzeigen</summary>
+          <pre class="stelle-source-body" id="stelleSource"></pre>
+        </details>
       </div>
 
       <hr class="div">
@@ -642,6 +864,103 @@
   </div>
 </div>
 
+<!-- APPLICATIONS VIEW -->
+<div id="applicationsView" style="display:none">
+  <div class="apps-wrap">
+    <div class="apps-toolbar">
+      <div>
+        <h2 class="apps-title">Bewerbungen</h2>
+        <p class="apps-sub" id="appsSub">Lade Bewerbungen…</p>
+      </div>
+      <button class="apps-add-btn" onclick="openApplicationModal()">+ Bewerbung hinzufügen</button>
+    </div>
+    <div class="apps-list" id="applicationsList"></div>
+  </div>
+</div>
+
+<!-- SETTINGS VIEW -->
+<div id="settingsView" style="display:none">
+  <div class="settings-wrap">
+    <div class="apps-toolbar">
+      <div>
+        <h2 class="apps-title">Einstellungen</h2>
+        <p class="apps-sub">Hinterlege Beispiel-Anschreiben in beiden Sprachen. Die KI analysiert daraus deinen Stil (Tonfall, Satzbau, Wortwahl) und übernimmt ihn beim Generieren — wörtliche Inhalte werden nicht übernommen.</p>
+      </div>
+      <button class="apps-add-btn" id="settingsSaveBtn" onclick="saveSettings()">Speichern</button>
+    </div>
+    <div class="settings-grid">
+      <div class="settings-card">
+        <div class="settings-card-title">🇩🇪 Motivationsschreiben (Deutsch)</div>
+        <p class="settings-card-hint">Füge ein bereits geschriebenes Anschreiben ein und lass die KI deinen Stil destillieren. Die Analyse kannst du anschließend frei bearbeiten — sie wird beim Generieren als Stilvorgabe verwendet.</p>
+        <label class="settings-sublabel">Beispiel-Text</label>
+        <textarea id="styleExampleDe" rows="10" placeholder="Sehr geehrte Damen und Herren, …" oninput="updateStyleCount('de')"></textarea>
+        <div class="settings-actions-row">
+          <button class="action-btn primary" id="analyzeDeBtn" onclick="analyzeStyle('de')">✨ Stil analysieren</button>
+          <span class="settings-meta"><span id="styleDeCount">0 Zeichen</span></span>
+        </div>
+        <label class="settings-sublabel">Analysierter Stil <span class="opt">(editierbar — wird beim Generieren verwendet)</span></label>
+        <textarea id="styleAnalysisDe" rows="9" placeholder="Klicke „Stil analysieren" — oder schreibe direkt eigene Stilrichtlinien rein (z.B. „- kurze, aktive Sätze\n- keine Floskeln\n- direkter Einstieg ohne hiermit-bewerbe-ich-mich")."></textarea>
+      </div>
+      <div class="settings-card">
+        <div class="settings-card-title">🇬🇧 Cover Letter (English)</div>
+        <p class="settings-card-hint">Paste an English cover letter and let the AI distill your style. Edit the analysis freely — it'll be used as the style guide when generating.</p>
+        <label class="settings-sublabel">Example text</label>
+        <textarea id="styleExampleEn" rows="10" placeholder="Dear Hiring Manager, …" oninput="updateStyleCount('en')"></textarea>
+        <div class="settings-actions-row">
+          <button class="action-btn primary" id="analyzeEnBtn" onclick="analyzeStyle('en')">✨ Analyze style</button>
+          <span class="settings-meta"><span id="styleEnCount">0 characters</span></span>
+        </div>
+        <label class="settings-sublabel">Analyzed style <span class="opt">(editable — used when generating)</span></label>
+        <textarea id="styleAnalysisEn" rows="9" placeholder="Click „Analyze style" — or write your own style rules here (e.g. „- short active sentences\n- no filler phrases\n- direct opening")."></textarea>
+      </div>
+    </div>
+    <div class="settings-status" id="settingsStatus"></div>
+  </div>
+</div>
+
+<!-- APPLICATION MODAL -->
+<div class="modal-overlay" id="appModalOverlay" onclick="closeAppModalOnBackdrop(event)">
+  <div class="modal" style="width:520px">
+    <h3 id="appModalTitle">Bewerbung hinzufügen</h3>
+    <input type="hidden" id="appModalId"/>
+    <div class="row2">
+      <div class="form-group">
+        <label>Unternehmen *</label>
+        <input type="text" id="appModalCompany" placeholder="z.B. SAP SE"/>
+      </div>
+      <div class="form-group">
+        <label>Position *</label>
+        <input type="text" id="appModalPosition" placeholder="z.B. Product Manager"/>
+      </div>
+    </div>
+    <div class="row2">
+      <div class="form-group">
+        <label>Aktueller Status</label>
+        <select id="appModalStage" onchange="onAppModalStageChange()">
+          <option value="documents_created">Erstellt</option>
+          <option value="application_sent">Versendet</option>
+          <option value="interview_1">1. Gespräch</option>
+          <option value="interview_2">2. Gespräch</option>
+          <option value="interview_3">3. Gespräch</option>
+          <option value="rejected">❌ Abgesagt</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Bewerbungsdatum <span class="opt">(opt.)</span></label>
+        <input type="date" id="appModalAppliedAt" style="color:#2c3e50"/>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Feedback / Notizen <span class="opt">(opt.)</span></label>
+      <textarea id="appModalFeedback" rows="4" placeholder="z.B. Recruiter-Gespräch am 22.05., positiv…"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeApplicationModal()">Abbrechen</button>
+      <button class="btn-save" onclick="saveApplicationFromModal()">Speichern</button>
+    </div>
+  </div>
+</div>
+
 <!-- ENTRY MODAL (experience / education) -->
 <div class="modal-overlay" id="entryModalOverlay" onclick="closeEntryModalOnBackdrop(event)">
   <div class="modal" style="width:520px">
@@ -764,21 +1083,474 @@
   let projects = [];
   let profile = { experience: [], education: [], hard_skills: [], soft_skills: [], languages: [] };
   let editingId = null;
+  let applications = [];
+
+  const APP_STAGES = [
+    { key: 'documents_created', label: 'Erstellt' },
+    { key: 'application_sent',  label: 'Versendet' },
+    { key: 'interview_1',       label: '1. Gespräch' },
+    { key: 'interview_2',       label: '2. Gespräch' },
+    { key: 'interview_3',       label: '3. Gespräch' },
+    { key: 'rejected',          label: 'Abgesagt' },
+  ];
+  const LINEAR_STAGES = APP_STAGES.filter(s => s.key !== 'rejected');
 
   async function init() {
-    const [projectsRes, profileRes, layoutsRes] = await Promise.all([
+    const [projectsRes, profileRes, layoutsRes, appsRes, settingsRes] = await Promise.all([
       fetch('/projects'),
       fetch('/profile'),
-      fetch('/layouts')
+      fetch('/layouts'),
+      fetch('/applications'),
+      fetch('/settings')
     ]);
     projects = await projectsRes.json();
     profile = await profileRes.json();
     const layouts = await layoutsRes.json();
     layouts.forEach(l => { layoutStyles[l.id] = l.style; });
+    applications = await appsRes.json();
+    const settings = await settingsRes.json();
+    document.getElementById('styleExampleDe').value  = (settings.style_examples && settings.style_examples.de) || '';
+    document.getElementById('styleExampleEn').value  = (settings.style_examples && settings.style_examples.en) || '';
+    document.getElementById('styleAnalysisDe').value = (settings.style_analysis && settings.style_analysis.de) || '';
+    document.getElementById('styleAnalysisEn').value = (settings.style_analysis && settings.style_analysis.en) || '';
+    updateStyleCount('de');
+    updateStyleCount('en');
     renderProjects();
     renderEntries('experience');
     renderEntries('education');
     renderSkills();
+    updateAppsCount();
+  }
+
+  // ── View switching (Generator ↔ Bewerbungen ↔ Einstellungen) ──
+  function showView(view) {
+    document.getElementById('generatorView').style.display    = view === 'generator'    ? 'grid'  : 'none';
+    document.getElementById('applicationsView').style.display = view === 'applications' ? 'block' : 'none';
+    document.getElementById('settingsView').style.display     = view === 'settings'     ? 'block' : 'none';
+    document.getElementById('navGenerator').classList.toggle('active',    view === 'generator');
+    document.getElementById('navApplications').classList.toggle('active', view === 'applications');
+    document.getElementById('navSettings').classList.toggle('active',     view === 'settings');
+    if (view === 'applications') renderApplications();
+  }
+
+  // ── Settings ──
+  function updateStyleCount(lang) {
+    const el = document.getElementById('styleExample' + (lang === 'de' ? 'De' : 'En'));
+    const out = document.getElementById('style' + (lang === 'de' ? 'De' : 'En') + 'Count');
+    const n = (el.value || '').length;
+    out.textContent = lang === 'de' ? `${n} Zeichen` : `${n} characters`;
+  }
+
+  async function saveSettings() {
+    const btn    = document.getElementById('settingsSaveBtn');
+    const status = document.getElementById('settingsStatus');
+    btn.disabled = true; btn.textContent = 'Speichern…';
+    status.classList.remove('show', 'error');
+    try {
+      const res = await fetch('/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          style_examples: {
+            de: document.getElementById('styleExampleDe').value,
+            en: document.getElementById('styleExampleEn').value,
+          },
+          style_analysis: {
+            de: document.getElementById('styleAnalysisDe').value,
+            en: document.getElementById('styleAnalysisEn').value,
+          }
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Speichern fehlgeschlagen.');
+      status.textContent = '✓ Stil gespeichert. Wirkt beim nächsten Generieren.';
+      status.classList.add('show');
+      setTimeout(() => status.classList.remove('show'), 2500);
+    } catch (e) {
+      status.textContent = '✗ ' + e.message;
+      status.classList.add('show', 'error');
+    } finally {
+      btn.disabled = false; btn.textContent = 'Speichern';
+    }
+  }
+
+  async function analyzeStyle(lang) {
+    const suffix = lang === 'de' ? 'De' : 'En';
+    const example = document.getElementById('styleExample' + suffix).value.trim();
+    const analysisEl = document.getElementById('styleAnalysis' + suffix);
+    const btn = document.getElementById('analyze' + suffix + 'Btn');
+    const status = document.getElementById('settingsStatus');
+
+    if (!example) {
+      alert(lang === 'de'
+        ? 'Bitte zuerst ein Beispiel-Anschreiben einfügen.'
+        : 'Please paste an example cover letter first.');
+      return;
+    }
+
+    if (analysisEl.value.trim() && !confirm(lang === 'de'
+        ? 'Die bestehende Analyse wird überschrieben. Fortfahren?'
+        : 'This will overwrite the current analysis. Continue?')) {
+      return;
+    }
+
+    btn.disabled = true;
+    const original = btn.textContent;
+    btn.textContent = lang === 'de' ? 'Analysiere…' : 'Analyzing…';
+    status.classList.remove('show', 'error');
+
+    try {
+      const res = await fetch('/analyze-style', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ example, language: lang })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Analyse fehlgeschlagen.');
+      analysisEl.value = data.analysis || '';
+      status.textContent = lang === 'de'
+        ? '✓ Stil analysiert. Du kannst die Punkte jetzt anpassen und dann speichern.'
+        : '✓ Style analyzed. Tweak the points if you like, then save.';
+      status.classList.add('show');
+      setTimeout(() => status.classList.remove('show'), 3500);
+    } catch (e) {
+      status.textContent = '✗ ' + e.message;
+      status.classList.add('show', 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = original;
+    }
+  }
+
+  // ── Applications ──
+  function updateAppsCount() {
+    document.getElementById('appsCountBadge').textContent = applications.length;
+  }
+
+  function formatAppDate(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return iso.slice(0, 10);
+    const pad = n => String(n).padStart(2, '0');
+    return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()}`;
+  }
+
+  function stageIndex(stageKey) {
+    const idx = APP_STAGES.findIndex(s => s.key === stageKey);
+    return idx < 0 ? 0 : idx;
+  }
+
+  function renderApplications() {
+    const list = document.getElementById('applicationsList');
+    const sub  = document.getElementById('appsSub');
+    sub.textContent = applications.length
+      ? `${applications.length} ${applications.length === 1 ? 'Bewerbung' : 'Bewerbungen'} insgesamt`
+      : 'Noch keine Bewerbungen erfasst.';
+    if (!applications.length) {
+      list.innerHTML = '<div class="apps-empty">Klicke auf <strong>Generieren</strong>, um eine Bewerbung automatisch anzulegen, oder füge eine bereits versendete Bewerbung manuell hinzu.</div>';
+      return;
+    }
+    const sorted = applications.slice().sort((a, b) =>
+      (b.updated_at || '').localeCompare(a.updated_at || '')
+    );
+    list.innerHTML = sorted.map(renderApplicationCard).join('');
+  }
+
+  function durationInCurrentStage(app) {
+    const hist = app.stage_history || [];
+    if (!hist.length) return '';
+    const last = hist[hist.length - 1];
+    const from = new Date(last.at);
+    if (isNaN(from.getTime())) return '';
+    const days = Math.floor((Date.now() - from.getTime()) / 86_400_000);
+    if (days <= 0)  return 'seit heute';
+    if (days === 1) return 'seit 1 Tag';
+    return `seit ${days} Tagen`;
+  }
+
+  function stageLabel(key) {
+    const s = APP_STAGES.find(x => x.key === key);
+    return s ? s.label : key;
+  }
+
+  function renderCvSnapshot(app) {
+    const cv = app.cv_content;
+    if (!cv) return '';
+
+    const profileHtml = cv.profile
+      ? `<p class="cv-snap-profile">${esc(cv.profile)}</p>`
+      : '';
+
+    const expHtml = (cv.experience || []).map(e => {
+      const entry = (profile.experience || []).find(x => x.id === e.id) || {};
+      const company = entry.company ? ' @ ' + esc(entry.company) : '';
+      const bullets = (e.bullets || []).map(b => `<li>${esc(b)}</li>`).join('');
+      return `<div class="cv-snap-exp"><strong>${esc(e.title || entry.title || '')}</strong>${company}${bullets ? `<ul>${bullets}</ul>` : ''}</div>`;
+    }).join('');
+
+    const eduHtml = (cv.education || []).map(e => {
+      const entry = (profile.education || []).find(x => x.id === e.id) || {};
+      const inst = entry.institution ? ' — ' + esc(entry.institution) : '';
+      return `<li>${esc(e.degree || entry.degree || '')}${inst}</li>`;
+    }).join('');
+
+    const projsHtml = (cv.projects || []).map(p =>
+      `<li><strong>${esc(p.title || '')}</strong>${p.description ? ': ' + esc(p.description) : ''}</li>`
+    ).join('');
+
+    const skillsHtml = Object.entries(cv.skills || {}).map(([cat, val]) =>
+      `<div class="cv-snap-skill"><strong>${esc(cat)}:</strong> ${esc(val)}</div>`
+    ).join('');
+
+    const langLabel = app.language === 'en' ? 'EN' : 'DE';
+    const layoutLabel = app.layout_used ? esc(app.layout_used) : '–';
+
+    const section = (title, body) => body
+      ? `<div class="cv-snap-section"><div class="cv-snap-title">${title}</div>${body}</div>`
+      : '';
+
+    return `
+      <details class="cv-snap-details">
+        <summary>📄 Erstellte CV-Inhalte anzeigen <span class="cv-snap-meta">Layout: ${layoutLabel} · ${langLabel}</span></summary>
+        <div class="cv-snap">
+          ${section('Profil-Statement', profileHtml)}
+          ${section('Berufserfahrung (ausgewählt + zugeschnitten)', expHtml)}
+          ${section('Ausbildung', eduHtml ? `<ul>${eduHtml}</ul>` : '')}
+          ${section('Projekte (ausgewählt + zugeschnitten)', projsHtml ? `<ul>${projsHtml}</ul>` : '')}
+          ${section('Skills', skillsHtml)}
+        </div>
+      </details>
+    `;
+  }
+
+  function renderAnschreibenSnapshot(app) {
+    const an = app.anschreiben_content;
+    if (!an) return '';
+    const subject  = an.subject  ? `<p class="cv-snap-subject">${esc(an.subject)}</p>` : '';
+    const greeting = an.greeting ? `<p>${esc(an.greeting)}</p>` : '';
+    const paras = (an.paragraphs || []).map(p => `<p>${esc(p)}</p>`).join('');
+    if (!subject && !greeting && !paras) return '';
+    return `
+      <details class="cv-snap-details">
+        <summary>✉️ Anschreiben-Text anzeigen</summary>
+        <div class="cv-snap">
+          ${subject}${greeting}${paras}
+        </div>
+      </details>
+    `;
+  }
+
+  function renderApplicationCard(app) {
+    const isRejected = app.stage === 'rejected';
+
+    // For rejected entries, determine the last progress stage reached
+    // (everything up to and including it is "completed"; nothing is "current").
+    let currentLinearIdx = LINEAR_STAGES.findIndex(s => s.key === app.stage);
+    if (isRejected) {
+      const hist = app.stage_history || [];
+      const lastProgress = [...hist].reverse().find(h => h.stage !== 'rejected');
+      currentLinearIdx = lastProgress
+        ? LINEAR_STAGES.findIndex(s => s.key === lastProgress.stage)
+        : -1;
+    }
+
+    const stepsHtml = LINEAR_STAGES.map((s, i) => {
+      let state = '';
+      if (isRejected) {
+        state = i <= currentLinearIdx ? 'completed' : '';
+      } else {
+        state = i < currentLinearIdx ? 'completed' : (i === currentLinearIdx ? 'current' : '');
+      }
+      const lineState = (i < currentLinearIdx) ? 'completed' : '';
+      const line = i < LINEAR_STAGES.length - 1
+        ? `<div class="step-line ${lineState}"></div>`
+        : '';
+      return `
+        <div class="step ${state}" onclick="setApplicationStage('${app.id}', '${s.key}')" title="${esc(s.label)}">
+          <div class="step-circle">${i + 1}</div>
+          <div class="step-label">${esc(s.label)}</div>
+        </div>${line}
+      `;
+    }).join('');
+
+    const title = esc(app.company || '(kein Unternehmen)');
+    const pos   = app.position ? `<span class="app-card-pos">— ${esc(app.position)}</span>` : '';
+    const applied = app.applied_at
+      ? `<span class="app-meta-pill">📨 Bewerbung: ${formatAppDate(app.applied_at)}</span>`
+      : '';
+
+    let statusPill;
+    if (isRejected) {
+      const rejectedAt = (app.stage_history || []).slice().reverse().find(h => h.stage === 'rejected');
+      const when = rejectedAt ? formatAppDate(rejectedAt.at) : '';
+      statusPill = `<span class="app-meta-pill rejected">❌ Abgesagt${when ? ' am ' + when : ''}</span>`;
+    } else {
+      const duration = durationInCurrentStage(app);
+      statusPill = duration
+        ? `<span class="app-meta-pill">⏱ ${esc(duration)} in „${esc(stageLabel(app.stage))}"</span>`
+        : '';
+    }
+
+    const rejectAction = isRejected
+      ? `<button class="action-btn" onclick="reactivateApplication('${app.id}')">↺ Reaktivieren</button>`
+      : `<button class="action-btn reject" onclick="rejectApplication('${app.id}')">❌ Als abgesagt markieren</button>`;
+
+    return `
+      <div class="app-card ${isRejected ? 'rejected' : ''}" data-id="${app.id}">
+        <div class="app-card-header">
+          <div class="app-card-title">${title} ${pos}</div>
+          <div class="app-card-date">${formatAppDate(app.updated_at)}</div>
+        </div>
+        <div class="app-meta">${applied}${statusPill}</div>
+        <div class="stepper">${stepsHtml}</div>
+        ${renderCvSnapshot(app)}
+        ${renderAnschreibenSnapshot(app)}
+        <textarea class="app-feedback" id="appFb-${app.id}" placeholder="Feedback / Notizen…">${esc(app.feedback || '')}</textarea>
+        <div class="app-actions">
+          <span class="feedback-saved" id="appFbSaved-${app.id}">✓ gespeichert</span>
+          <button class="action-btn primary" onclick="saveApplicationFeedback('${app.id}')">Feedback speichern</button>
+          ${rejectAction}
+          <button class="action-btn" onclick="openApplicationModal('${app.id}')">Bearbeiten</button>
+          <button class="action-btn danger" onclick="deleteApplication('${app.id}')">Löschen</button>
+        </div>
+      </div>
+    `;
+  }
+
+  async function rejectApplication(id) {
+    await setApplicationStage(id, 'rejected');
+  }
+
+  async function reactivateApplication(id) {
+    const app = applications.find(a => a.id === id);
+    if (!app) return;
+    // Restore to last non-rejected stage from history, or default to documents_created
+    const hist = app.stage_history || [];
+    const lastProgress = [...hist].reverse().find(h => h.stage !== 'rejected');
+    const restoreTo = lastProgress ? lastProgress.stage : 'documents_created';
+    await setApplicationStage(id, restoreTo);
+  }
+
+  async function setApplicationStage(id, stage) {
+    const res = await fetch('/applications/' + id, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ stage })
+    });
+    if (!res.ok) return;
+    const updated = await res.json();
+    const i = applications.findIndex(a => a.id === id);
+    if (i >= 0) applications[i] = updated;
+    renderApplications();
+  }
+
+  async function saveApplicationFeedback(id) {
+    const ta = document.getElementById('appFb-' + id);
+    if (!ta) return;
+    const res = await fetch('/applications/' + id, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ feedback: ta.value })
+    });
+    if (!res.ok) return;
+    const updated = await res.json();
+    const i = applications.findIndex(a => a.id === id);
+    if (i >= 0) applications[i] = updated;
+    const flash = document.getElementById('appFbSaved-' + id);
+    if (flash) {
+      flash.classList.add('show');
+      setTimeout(() => flash.classList.remove('show'), 1500);
+    }
+  }
+
+  async function deleteApplication(id) {
+    if (!confirm('Bewerbung wirklich löschen?')) return;
+    const res = await fetch('/applications/' + id, { method: 'DELETE' });
+    if (!res.ok) return;
+    applications = applications.filter(a => a.id !== id);
+    updateAppsCount();
+    renderApplications();
+  }
+
+  function todayIso() {
+    return new Date().toISOString().slice(0, 10);
+  }
+
+  function stageIsSentOrLater(stage) {
+    return APP_STAGES.findIndex(s => s.key === stage)
+         >= APP_STAGES.findIndex(s => s.key === 'application_sent');
+  }
+
+  function onAppModalStageChange() {
+    const stage = document.getElementById('appModalStage').value;
+    const dateEl = document.getElementById('appModalAppliedAt');
+    if (stageIsSentOrLater(stage) && !dateEl.value) {
+      dateEl.value = todayIso();
+    }
+  }
+
+  function openApplicationModal(id) {
+    const isEdit = !!id;
+    document.getElementById('appModalTitle').textContent = isEdit ? 'Bewerbung bearbeiten' : 'Bewerbung hinzufügen';
+    document.getElementById('appModalId').value = id || '';
+    if (isEdit) {
+      const a = applications.find(x => x.id === id) || {};
+      document.getElementById('appModalCompany').value   = a.company    || '';
+      document.getElementById('appModalPosition').value  = a.position   || '';
+      document.getElementById('appModalStage').value     = a.stage      || 'documents_created';
+      document.getElementById('appModalFeedback').value  = a.feedback   || '';
+      document.getElementById('appModalAppliedAt').value = a.applied_at || '';
+    } else {
+      document.getElementById('appModalCompany').value   = '';
+      document.getElementById('appModalPosition').value  = '';
+      document.getElementById('appModalStage').value     = 'application_sent';
+      document.getElementById('appModalFeedback').value  = '';
+      document.getElementById('appModalAppliedAt').value = todayIso();
+    }
+    document.getElementById('appModalOverlay').classList.add('open');
+  }
+
+  function closeApplicationModal() {
+    document.getElementById('appModalOverlay').classList.remove('open');
+  }
+
+  function closeAppModalOnBackdrop(e) {
+    if (e.target.id === 'appModalOverlay') closeApplicationModal();
+  }
+
+  async function saveApplicationFromModal() {
+    const id       = document.getElementById('appModalId').value;
+    const company  = document.getElementById('appModalCompany').value.trim();
+    const position = document.getElementById('appModalPosition').value.trim();
+    if (!company && !position) {
+      alert('Bitte Unternehmen oder Position angeben.');
+      return;
+    }
+    const payload = {
+      company,
+      position,
+      stage:      document.getElementById('appModalStage').value,
+      feedback:   document.getElementById('appModalFeedback').value,
+      applied_at: document.getElementById('appModalAppliedAt').value || null,
+    };
+    const url    = id ? '/applications/' + id : '/applications';
+    const method = id ? 'PUT' : 'POST';
+    const res    = await fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (!res.ok) { alert(data.error || 'Speichern fehlgeschlagen.'); return; }
+    if (id) {
+      const i = applications.findIndex(a => a.id === id);
+      if (i >= 0) applications[i] = data;
+    } else {
+      applications.push(data);
+    }
+    closeApplicationModal();
+    updateAppsCount();
+    renderApplications();
   }
 
   // ── Input mode ──
@@ -901,6 +1673,23 @@
     const el = document.getElementById('errorMsg');
     el.textContent = msg; el.style.display = msg ? 'block' : 'none';
   }
+  function renderJobOverview(summary, sourceText) {
+    const does  = summary.company_does || '';
+    const wants = Array.isArray(summary.searching_for) ? summary.searching_for : [];
+    const techs = Array.isArray(summary.technologies)  ? summary.technologies  : [];
+
+    document.getElementById('stelleDoes').textContent = does || '–';
+    document.getElementById('stelleWants').innerHTML = wants.length
+      ? wants.map(w => `<li>${esc(w)}</li>`).join('')
+      : '<li style="color:#999;font-style:italic;list-style:none;margin-left:-0.95rem">Keine Angaben extrahiert.</li>';
+    document.getElementById('stelleTech').innerHTML = techs.length
+      ? techs.map(t => `<span class="stelle-tech-tag">${esc(t)}</span>`).join('')
+      : '<span class="stelle-tech-empty">Keine Technologien in der Ausschreibung genannt.</span>';
+    document.getElementById('stelleSource').textContent = sourceText || '';
+
+    document.getElementById('jobOverview').style.display = 'block';
+  }
+
   function setDoc(type, html) {
     generatedDocs[type] = html;
     const iframe = document.getElementById('iframe-' + type);
@@ -937,6 +1726,13 @@
 
       if (data.cv_content)          { generatedContent.cv = data.cv_content; buildCvEditor(data.cv_content); }
       if (data.anschreiben_content) { generatedContent.anschreiben = data.anschreiben_content; buildAnschreibenEditor(data.anschreiben_content); }
+      if (data.job_summary)         { renderJobOverview(data.job_summary, data.job_posting || jobPosting); }
+      if (data.application) {
+        const i = applications.findIndex(a => a.id === data.application.id);
+        if (i >= 0) applications[i] = data.application;
+        else        applications.push(data.application);
+        updateAppsCount();
+      }
 
       // Show editor tab
       document.getElementById('empty-edit').style.display = 'none';

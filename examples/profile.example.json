@@ -1,0 +1,62 @@
+{
+  "experience": [
+    {
+      "id": "mm-intern-2025",
+      "title": "Werkstudent Softwareentwicklung",
+      "company": "MusterTech Solutions GmbH",
+      "location": "Berlin",
+      "start": "2024-09",
+      "end": "2025-12",
+      "current": false,
+      "bullets": [
+        "Mitwirkung an einem internen Dashboard (React, TypeScript) inkl. Code Reviews und kleiner Feature-Umsetzungen.",
+        "Schreiben von Unit-Tests und Behebung von Bugs in Abstimmung mit dem Team."
+      ],
+      "visible": true
+    },
+    {
+      "id": "mm-support-2023",
+      "title": "Studentische Hilfskraft IT-Support",
+      "company": "Universität Musterstadt",
+      "location": "Musterstadt",
+      "start": "2022-10",
+      "end": "2024-08",
+      "current": false,
+      "bullets": [
+        "Erste-Anlauf-Stelle für Studierende und Mitarbeitende zu E-Mail, VPN und Druckern.",
+        "Dokumentation häufiger Lösungen in der internen Wissensdatenbank gepflegt."
+      ],
+      "visible": true
+    }
+  ],
+  "education": [
+    {
+      "id": "mm-bsc-wi",
+      "degree": "B.Sc. Wirtschaftsinformatik",
+      "institution": "Universität Musterstadt",
+      "location": "Musterstadt",
+      "start": "2021-10",
+      "end": "2025-03",
+      "current": false,
+      "details": [
+        "Bachelorthesis (Note 2.0): „Prototyp einer webbasierten Reservierungslösung für Lernräume“"
+      ],
+      "visible": true
+    }
+  ],
+  "hard_skills": [
+    { "id": "mm-hs-python", "name": "Python" },
+    { "id": "mm-hs-sql", "name": "SQL" },
+    { "id": "mm-hs-react", "name": "React" },
+    { "id": "mm-hs-git", "name": "Git" }
+  ],
+  "soft_skills": [
+    { "id": "mm-ss-team", "name": "Teamarbeit" },
+    { "id": "mm-ss-learn", "name": "Schnelle Einarbeitung" },
+    { "id": "mm-ss-org", "name": "Strukturierte Arbeitsweise" }
+  ],
+  "languages": [
+    { "id": "mm-lang-de", "name": "Deutsch", "level": "Muttersprache" },
+    { "id": "mm-lang-en", "name": "Englisch", "level": "B2" }
+  ]
+}
