@@ -28,12 +28,24 @@ glance-able summary.
 
 
 
+https://github.com/user-attachments/assets/33ebf7e9-95f9-4c34-a288-7bad265faa12
+
+
+
+
 ### Part 2 — Generate the CV (and cover letter)
 
 One click turns the queued posting into a tailored CV in your chosen
 layout (Modern / Sidebar / Classic) plus a matching Anschreiben in DE or
 EN. Edit the profile statement, swap experience bullets, toggle projects
 — live preview updates as you go.
+
+
+
+
+
+https://github.com/user-attachments/assets/46c0b6bc-1f36-475b-affe-67ab88aeb7bd
+
 
 
 
@@ -45,6 +57,8 @@ with per-card timestamps and a per-application snapshot of exactly what
 got sent. The Statistik tab turns the underlying `stage_events` history
 into a funnel chart and time-in-stage averages.
 
+https://github.com/user-attachments/assets/59d5b5fa-ba97-4d4e-ae2b-8045e06081ed
+
 
 
 ### Part 4 — Profile & AI writing-style analysis
@@ -54,6 +68,10 @@ projects), then paste an example cover letter and let Gemini **distill
 your writing style** into editable bullet rules. Future Anschreiben
 follow those rules, not the raw example — so you can steer the AI's
 voice without rewriting letters from scratch.
+
+
+
+https://github.com/user-attachments/assets/3888dbe1-4a1f-4bcf-8de6-60cfc58fe635
 
 
 
