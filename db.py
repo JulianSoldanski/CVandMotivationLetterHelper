@@ -34,6 +34,7 @@ def init_schema():
                 feedback            TEXT NOT NULL DEFAULT '',
                 applied_at          TEXT,
                 job_posting         TEXT NOT NULL DEFAULT '',
+                job_url             TEXT NOT NULL DEFAULT '',
                 cv_content          TEXT,        -- JSON snapshot of the generated CV (or NULL)
                 anschreiben_content TEXT,        -- JSON snapshot of the generated Anschreiben (or NULL)
                 layout_used         TEXT,
@@ -61,6 +62,7 @@ def init_schema():
             ("anschreiben_content", "TEXT"),
             ("layout_used",         "TEXT"),
             ("language",            "TEXT"),
+            ("job_url",             "TEXT NOT NULL DEFAULT ''"),
         ]:
             if col not in existing_cols:
                 conn.execute(f"ALTER TABLE applications ADD COLUMN {col} {decl}")
@@ -84,6 +86,7 @@ def _row_to_dict(row: sqlite3.Row, history: list[dict]) -> dict:
         "feedback":            row["feedback"],
         "applied_at":          row["applied_at"],
         "job_posting":         row["job_posting"],
+        "job_url":             row["job_url"] if "job_url" in row.keys() else "",
         "cv_content":          _parse(row["cv_content"]),
         "anschreiben_content": _parse(row["anschreiben_content"]),
         "layout_used":         row["layout_used"],
@@ -143,9 +146,9 @@ def upsert_application(entry: dict):
         conn.execute(
             """INSERT INTO applications
                  (id, company, position, current_stage, feedback, applied_at,
-                  job_posting, cv_content, anschreiben_content, layout_used, language,
+                  job_posting, job_url, cv_content, anschreiben_content, layout_used, language,
                   created_at, updated_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                ON CONFLICT(id) DO UPDATE SET
                  company             = excluded.company,
                  position            = excluded.position,
@@ -153,6 +156,7 @@ def upsert_application(entry: dict):
                  feedback            = excluded.feedback,
                  applied_at          = excluded.applied_at,
                  job_posting         = excluded.job_posting,
+                 job_url             = excluded.job_url,
                  cv_content          = COALESCE(excluded.cv_content,          applications.cv_content),
                  anschreiben_content = COALESCE(excluded.anschreiben_content, applications.anschreiben_content),
                  layout_used         = COALESCE(excluded.layout_used,         applications.layout_used),
@@ -166,6 +170,7 @@ def upsert_application(entry: dict):
                 entry.get("feedback", ""),
                 entry.get("applied_at"),
                 entry.get("job_posting", ""),
+                entry.get("job_url", ""),
                 _serialize(entry.get("cv_content")),
                 _serialize(entry.get("anschreiben_content")),
                 entry.get("layout_used"),
@@ -182,6 +187,24 @@ def append_stage_event(app_id: str, stage: str, at: str):
             "INSERT INTO stage_events (application_id, stage, at) VALUES (?, ?, ?)",
             (app_id, stage, at),
         )
+
+
+def update_last_rejected_event_at(app_id: str, at: str) -> int:
+    """Set the timestamp of the most recent 'rejected' stage_event for this app.
+
+    Returns the number of rows updated (0 if no rejected event exists).
+    """
+    with get_conn() as conn:
+        cur = conn.execute(
+            """UPDATE stage_events SET at = ?
+               WHERE id = (
+                 SELECT id FROM stage_events
+                 WHERE application_id = ? AND stage = 'rejected'
+                 ORDER BY id DESC LIMIT 1
+               )""",
+            (at, app_id),
+        )
+        return cur.rowcount
 
 
 def last_stage_event(app_id: str) -> dict | None:

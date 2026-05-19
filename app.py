@@ -25,6 +25,8 @@ APPLICATIONS_FILE = os.path.join(os.path.dirname(__file__), "data", "application
 SETTINGS_FILE     = os.path.join(os.path.dirname(__file__), "data", "settings.json")
 
 db.init_schema()
+JOB_POSTING_MAX = 50_000
+JOB_URL_MAX = 500
 APPLICATION_STAGES = [
     "documents_created",
     "application_sent",
@@ -87,6 +89,18 @@ def _today_iso() -> str:
     return date.today().isoformat()
 
 
+def _normalize_calendar_date(value: str) -> str | None:
+    """Accept YYYY-MM-DD (from <input type=\"date\">) or leading YYYY-MM-DD of an ISO string."""
+    value = (value or "").strip()
+    if len(value) >= 10 and value[4] == "-" and value[7] == "-":
+        try:
+            date.fromisoformat(value[:10])
+            return value[:10]
+        except ValueError:
+            return None
+    return None
+
+
 def load_applications() -> list:
     return db.list_applications()
 
@@ -117,6 +131,7 @@ def log_application(
     company: str,
     position: str,
     job_posting: str = "",
+    job_url: str = "",
     cv_content: dict | None = None,
     anschreiben_content: dict | None = None,
     layout_used: str | None = None,
@@ -138,7 +153,9 @@ def log_application(
     if existing:
         existing["updated_at"] = now
         if job_posting:
-            existing["job_posting"] = job_posting[:4000]
+            existing["job_posting"] = job_posting[:JOB_POSTING_MAX]
+        if job_url:
+            existing["job_url"] = job_url[:JOB_URL_MAX]
         if cv_content is not None:
             existing["cv_content"] = cv_content
         if anschreiben_content is not None:
@@ -158,7 +175,8 @@ def log_application(
         "stage_history":       [{"stage": "documents_created", "at": now}],
         "applied_at":          None,
         "feedback":            "",
-        "job_posting":         job_posting[:4000] if job_posting else "",
+        "job_posting":         job_posting[:JOB_POSTING_MAX] if job_posting else "",
+        "job_url":             job_url[:JOB_URL_MAX] if job_url else "",
         "cv_content":          cv_content,
         "anschreiben_content": anschreiben_content,
         "layout_used":         layout_used,
@@ -887,8 +905,10 @@ def generate():
     except Exception as e:
         return jsonify({"error": f"Gemini-Fehler: {str(e)}"}), 500
 
+    job_url = (data.get("job_url") or "").strip()
     logged = log_application(
         company, position, job_posting,
+        job_url=job_url,
         cv_content          = result.get("cv_content"),
         anschreiben_content = result.get("anschreiben_content"),
         layout_used         = resolved_layout,
@@ -1271,6 +1291,116 @@ Format: reine Markdown-Bullet-Liste (\"- …\"), kein Vor- oder Nachwort, keine 
         return jsonify({"error": f"Gemini-Fehler: {str(e)}"}), 500
 
 
+@app.route("/parse-cv-pdf", methods=["POST"])
+def parse_cv_pdf():
+    """Extract text from an uploaded CV PDF and ask Gemini to structure it
+    into the same `cv_content` JSON shape that /generate produces.
+    """
+    if not os.environ.get("GEMINI_API_KEY"):
+        return jsonify({"error": "GEMINI_API_KEY nicht gesetzt."}), 500
+
+    upload = request.files.get("file")
+    if not upload or not upload.filename:
+        return jsonify({"error": "Keine Datei hochgeladen."}), 400
+    if not upload.filename.lower().endswith(".pdf"):
+        return jsonify({"error": "Bitte eine PDF-Datei hochladen."}), 400
+
+    try:
+        from pypdf import PdfReader
+    except ImportError:
+        return jsonify({"error": "pypdf nicht installiert (pip install pypdf)."}), 500
+
+    try:
+        reader = PdfReader(upload.stream)
+        pages = []
+        for page in reader.pages:
+            pages.append(page.extract_text() or "")
+        text = "\n".join(pages).strip()
+    except Exception as e:
+        return jsonify({"error": f"PDF konnte nicht gelesen werden: {e}"}), 400
+
+    if not text:
+        return jsonify({"error": "Aus der PDF konnte kein Text extrahiert werden."}), 400
+
+    # Self-contained shape: experience/education carry company/institution inline
+    # (not via profile ID lookup) because this PDF doesn't reference the user's
+    # current profile.
+    prompt = f"""Du erhältst den Rohtext eines Lebenslaufs (CV) aus einer PDF.
+Extrahiere die Inhalte in folgendes JSON-Format. Wenn ein Feld nicht im Text
+steht, lass es weg bzw. setze es auf null oder eine leere Liste.
+
+CV-TEXT:
+\"\"\"
+{text[:14000]}
+\"\"\"
+
+Gib NUR ein JSON-Objekt zurück:
+{{
+  "profile": "2-4 Sätze Profil-Statement (falls nicht vorhanden, freilassen)",
+  "experience": [
+    {{
+      "title":    "Berufsbezeichnung",
+      "company":  "Unternehmen",
+      "location": "Stadt (falls vorhanden)",
+      "start":    "YYYY-MM (falls vorhanden, sonst null)",
+      "end":      "YYYY-MM oder 'heute' (falls vorhanden)",
+      "bullets":  ["bullet 1", "bullet 2"]
+    }}
+  ],
+  "education": [
+    {{
+      "degree":      "Abschluss / Studiengang",
+      "institution": "Universität / Schule",
+      "location":    "Stadt",
+      "start":       "YYYY-MM",
+      "end":         "YYYY-MM"
+    }}
+  ],
+  "projects": [
+    {{
+      "title":       "Projekttitel",
+      "description": "1-2 Sätze"
+    }}
+  ],
+  "skills": {{
+    "Technisch": "kommagetrennte Liste",
+    "Methoden":  "kommagetrennte Liste",
+    "Sprachen":  "kommagetrennte Liste"
+  }}
+}}
+
+Regeln:
+- Nutze für skills die Kategorien aus dem CV; wenn keine vorhanden, fasse
+  alle Hard-Skills unter "Technisch", Soft-Skills unter "Methoden", Sprachen
+  unter "Sprachen" zusammen.
+- Erfinde keine Inhalte. Wenn der Abschnitt im CV fehlt, gib eine leere Liste
+  bzw. ein leeres Objekt zurück.
+"""
+    try:
+        cv_content = _call_gemini_json(prompt, 4096)
+    except Exception as e:
+        return jsonify({"error": f"Gemini-Fehler: {e}"}), 500
+
+    # Sanity-default missing keys so the frontend can rely on the shape
+    cv_content.setdefault("profile", "")
+    for key in ("experience", "education", "projects"):
+        if not isinstance(cv_content.get(key), list):
+            cv_content[key] = []
+    if not isinstance(cv_content.get("skills"), dict):
+        cv_content["skills"] = {}
+
+    summary = {
+        "experience_count": len(cv_content["experience"]),
+        "education_count":  len(cv_content["education"]),
+        "project_count":    len(cv_content["projects"]),
+        "skill_count":      sum(
+            len([s for s in str(v).split(",") if s.strip()])
+            for v in cv_content["skills"].values()
+        ),
+    }
+    return jsonify({"cv_content": cv_content, "summary": summary})
+
+
 @app.route("/applications", methods=["GET"])
 def list_applications():
     return jsonify(load_applications())
@@ -1301,21 +1431,28 @@ def create_application():
         sent_idx = APPLICATION_STAGES.index("application_sent")
         if APPLICATION_STAGES.index(stage) >= sent_idx:
             applied_at = _today_iso()
+    cv_content          = data.get("cv_content")
+    anschreiben_content = data.get("anschreiben_content")
     entry = {
-        "id":            str(uuid.uuid4())[:8],
-        "company":       company,
-        "position":      position,
-        "stage":         stage,
-        "stage_history": [{"stage": stage, "at": now}],
-        "applied_at":    applied_at,
-        "feedback":      (data.get("feedback") or "").strip(),
-        "job_posting":   (data.get("job_posting") or "")[:4000],
-        "created_at":    now,
-        "updated_at":    now,
+        "id":                  str(uuid.uuid4())[:8],
+        "company":             company,
+        "position":            position,
+        "stage":               stage,
+        "stage_history":       [{"stage": stage, "at": now}],
+        "applied_at":          applied_at,
+        "feedback":            (data.get("feedback") or "").strip(),
+        "job_posting":         (data.get("job_posting") or "")[:JOB_POSTING_MAX],
+        "job_url":             (data.get("job_url") or "").strip()[:JOB_URL_MAX],
+        "cv_content":          cv_content          if isinstance(cv_content,          dict) else None,
+        "anschreiben_content": anschreiben_content if isinstance(anschreiben_content, dict) else None,
+        "layout_used":         data.get("layout_used"),
+        "language":            data.get("language"),
+        "created_at":          now,
+        "updated_at":          now,
     }
     db.upsert_application(entry)
     db.append_stage_event(entry["id"], stage, now)
-    return jsonify(entry), 201
+    return jsonify(db.get_application(entry["id"]) or entry), 201
 
 
 @app.route("/applications/<app_id>", methods=["PUT"])
@@ -1339,12 +1476,29 @@ def update_application(app_id):
     if "applied_at" in data:
         v = (data.get("applied_at") or "").strip()
         a["applied_at"] = v or None
+    if "job_posting" in data:
+        a["job_posting"] = (data.get("job_posting") or "")[:JOB_POSTING_MAX]
+    if "job_url" in data:
+        a["job_url"] = (data.get("job_url") or "").strip()[:JOB_URL_MAX]
     a["updated_at"] = _now_iso()
 
     db.upsert_application(a)
     if new_event:
         db.append_stage_event(a["id"], new_event["stage"], new_event["at"])
-    return jsonify(a)
+
+    if "rejected_at" in data:
+        if a.get("stage") != "rejected":
+            return jsonify({"error": "„Abgesagt am“ ist nur bei Status „Abgesagt\" erlaubt."}), 400
+        raw = (data.get("rejected_at") or "").strip()
+        norm = _normalize_calendar_date(raw)
+        if not norm:
+            return jsonify({"error": "Ungültiges Datum für „Abgesagt am\" (erwartet JJJJ-MM-TT)."}), 400
+        n = db.update_last_rejected_event_at(app_id, norm)
+        if n == 0:
+            db.append_stage_event(app_id, "rejected", norm)
+
+    fresh = db.get_application(app_id)
+    return jsonify(fresh if fresh else a)
 
 
 @app.route("/applications/<app_id>", methods=["DELETE"])

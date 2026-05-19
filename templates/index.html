@@ -301,7 +301,130 @@
   .chat-send:disabled { background:#aaa; cursor:not-allowed; }
 
   /* Applications view */
-  #applicationsView { height:calc(100vh - 50px); overflow-y:auto; background:#f0f2f5; }
+  #applicationsView, #profileView, #statsView { height:calc(100vh - 50px); overflow-y:auto; background:#f0f2f5; }
+
+  /* Stats view */
+  .stats-wrap { max-width:1080px; margin:0 auto; padding:2rem 1.5rem 3rem; }
+  .stats-kpi-grid {
+    display:grid; grid-template-columns:repeat(auto-fit, minmax(170px, 1fr));
+    gap:0.85rem; margin-bottom:1.4rem;
+  }
+  .stats-card {
+    background:#fff; border:1px solid #e3e6ea; border-radius:10px;
+    padding:0.95rem 1.1rem; box-shadow:0 1px 3px rgba(0,0,0,.04);
+    display:flex; flex-direction:column; gap:0.25rem;
+  }
+  .stats-card-label {
+    font-size:0.7rem; font-weight:700; color:#888; text-transform:uppercase;
+    letter-spacing:0.05em;
+  }
+  .stats-card-value { font-size:1.55rem; font-weight:700; color:#2c3e50; line-height:1.15; }
+  .stats-card-sub { font-size:0.72rem; color:#999; }
+  .stats-card.accent .stats-card-value { color:#4B5D67; }
+  .stats-card.success .stats-card-value { color:#2e8b57; }
+  .stats-card.danger  .stats-card-value { color:#c0392b; }
+
+  .stats-grid-2 {
+    display:grid; grid-template-columns:1.2fr 1fr; gap:1rem;
+    margin-bottom:1rem;
+  }
+  @media (max-width: 880px) { .stats-grid-2 { grid-template-columns:1fr; } }
+
+  .stats-panel {
+    background:#fff; border:1px solid #e3e6ea; border-radius:10px;
+    padding:1.05rem 1.2rem 1.25rem; box-shadow:0 1px 3px rgba(0,0,0,.04);
+  }
+  .stats-panel-title {
+    font-size:0.82rem; font-weight:700; color:#2c3e50; margin-bottom:0.15rem;
+  }
+  .stats-panel-sub {
+    font-size:0.74rem; color:#999; margin-bottom:0.9rem;
+  }
+  .stats-empty {
+    background:#fff; border:1px dashed #ddd; border-radius:10px;
+    padding:2.5rem 1.5rem; text-align:center; color:#999; font-size:0.9rem;
+  }
+
+  /* Funnel */
+  .funnel-row { margin-bottom:0.55rem; }
+  .funnel-meta {
+    display:flex; justify-content:space-between; font-size:0.76rem;
+    color:#4B5D67; font-weight:600; margin-bottom:0.2rem;
+  }
+  .funnel-meta-right { color:#888; font-weight:500; font-size:0.72rem; }
+  .funnel-bar-track {
+    width:100%; height:18px; background:#eef1f4; border-radius:9px; overflow:hidden;
+  }
+  .funnel-bar-fill {
+    height:100%; background:linear-gradient(90deg, #4B5D67, #6c8392);
+    border-radius:9px; transition:width .35s ease;
+  }
+  .funnel-bar-fill.warn { background:linear-gradient(90deg, #c0392b, #e67e63); }
+
+  /* Donut for status distribution */
+  .donut-wrap { display:flex; align-items:center; gap:1.1rem; }
+  .donut {
+    width:140px; height:140px; border-radius:50%; flex-shrink:0; position:relative;
+    background:#eef1f4;
+  }
+  .donut::after {
+    content:""; position:absolute; inset:24px; background:#fff; border-radius:50%;
+  }
+  .donut-center {
+    position:absolute; inset:0; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; font-weight:700; color:#2c3e50;
+    z-index:1;
+  }
+  .donut-center .num { font-size:1.4rem; line-height:1; }
+  .donut-center .lbl { font-size:0.66rem; color:#999; font-weight:600; text-transform:uppercase; letter-spacing:0.05em; }
+  .donut-legend { flex:1; display:flex; flex-direction:column; gap:0.35rem; min-width:0; }
+  .donut-legend-row {
+    display:flex; align-items:center; gap:0.5rem; font-size:0.78rem; color:#4a5568;
+  }
+  .legend-swatch {
+    width:10px; height:10px; border-radius:2px; flex-shrink:0;
+  }
+  .legend-name { flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .legend-count { font-weight:700; color:#2c3e50; }
+
+  /* Monthly trend bars */
+  .month-bars {
+    display:grid; grid-auto-flow:column; grid-auto-columns:minmax(36px, 1fr);
+    gap:0.4rem; align-items:end; min-height:140px;
+  }
+  .month-bar-cell {
+    display:flex; flex-direction:column; align-items:center; gap:0.3rem;
+  }
+  .month-bar {
+    width:100%; background:linear-gradient(180deg, #6c8392, #4B5D67);
+    border-radius:5px 5px 0 0; min-height:2px; position:relative;
+  }
+  .month-bar-count {
+    position:absolute; top:-1.05rem; left:50%; transform:translateX(-50%);
+    font-size:0.7rem; font-weight:700; color:#4B5D67;
+  }
+  .month-bar-label {
+    font-size:0.66rem; color:#888; font-weight:600; text-align:center;
+    line-height:1.1;
+  }
+
+  /* Median time list */
+  .median-list { display:flex; flex-direction:column; gap:0.5rem; }
+  .median-row {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:0.55rem 0.7rem; border:1px solid #eef1f4; border-radius:7px;
+    background:#fafbfc;
+  }
+  .median-row-label { font-size:0.78rem; color:#2c3e50; font-weight:600; }
+  .median-row-meta  { font-size:0.7rem; color:#999; }
+  .median-row-value { font-size:0.9rem; font-weight:700; color:#4B5D67; }
+  .median-row-value.warn { color:#c0392b; }
+  .profile-wrap { max-width:720px; margin:0 auto; padding:2rem 1.5rem 3rem; }
+  .profile-section {
+    background:#fff; border:1px solid #e3e6ea; border-radius:10px;
+    padding:1rem 1.25rem 1.15rem; margin-bottom:0.9rem;
+    box-shadow:0 1px 3px rgba(0,0,0,.04);
+  }
   .apps-wrap { max-width:880px; margin:0 auto; padding:2rem 1.5rem 3rem; }
   .apps-toolbar { display:flex; align-items:flex-end; justify-content:space-between; gap:1rem; margin-bottom:1.4rem; }
   .apps-title { font-size:1.4rem; font-weight:700; color:#2c3e50; }
@@ -315,6 +438,47 @@
   .apps-empty {
     background:#fff; border:1px dashed #ddd; border-radius:10px;
     padding:2.5rem 1.5rem; text-align:center; color:#999; font-size:0.9rem;
+  }
+  .apps-filters {
+    display:flex; flex-wrap:wrap; gap:0.75rem 1rem; align-items:flex-end;
+    margin-bottom:1rem; padding:0.85rem 1rem; background:#fff;
+    border:1px solid #e3e6ea; border-radius:10px;
+  }
+  .apps-filter-group { display:flex; flex-direction:column; gap:0.25rem; min-width:140px; }
+  .apps-filter-group label { font-size:0.72rem; font-weight:600; color:#888; text-transform:uppercase; letter-spacing:0.04em; }
+  .apps-filter-group select {
+    padding:0.4rem 0.55rem; border:1px solid #ddd; border-radius:6px;
+    font-size:0.82rem; color:#2c3e50; background:#fff;
+  }
+  .apps-filter-count { margin-left:auto; font-size:0.8rem; color:#888; align-self:center; }
+  .app-job-link {
+    font-size:0.78rem; font-weight:600; color:#3498db; text-decoration:none;
+    display:inline-flex; align-items:center; gap:0.25rem; margin-left:0.35rem;
+  }
+  .app-job-link:hover { text-decoration:underline; }
+  .job-posting-details {
+    margin:0.35rem 0 0.65rem; border:1px solid #e8ecf0; border-radius:8px;
+    background:#f8fafb; overflow:hidden;
+  }
+  .job-posting-details summary {
+    cursor:pointer; list-style:none; padding:0.65rem 0.85rem;
+    font-size:0.8rem; line-height:1.45; color:#4a5568;
+  }
+  .job-posting-details summary::-webkit-details-marker { display:none; }
+  .job-posting-details summary::before {
+    content:"▸ "; font-weight:700; color:#4B5D67; margin-right:0.15rem;
+  }
+  .job-posting-details[open] summary::before { content:"▾ "; }
+  .job-posting-details summary:hover { background:#f0f4f6; }
+  .job-posting-label {
+    font-size:0.72rem; font-weight:700; color:#4B5D67; text-transform:uppercase;
+    letter-spacing:0.04em; display:block; margin-bottom:0.35rem;
+  }
+  .job-posting-preview { color:#555; }
+  .job-posting-full {
+    padding:0 0.85rem 0.75rem; border-top:1px solid #e8ecf0;
+    font-size:0.8rem; line-height:1.55; color:#2c3e50;
+    white-space:pre-wrap; word-break:break-word; max-height:320px; overflow-y:auto;
   }
   .apps-list { display:flex; flex-direction:column; gap:0.9rem; }
   .app-card {
@@ -360,6 +524,38 @@
   .step.completed .step-label, .step.current .step-label { color:#4B5D67; font-weight:600; }
   .step-line { flex:1; height:2px; background:#e3e6ea; margin:14px 0.1rem 0; min-width:18px; }
   .step-line.completed { background:#4B5D67; }
+
+  /* PDF drop zone in the application modal */
+  .pdf-drop {
+    border: 1.5px dashed #ccd3d8; border-radius: 8px; padding: 0.9rem 1rem;
+    background: #fafbfc; transition: border-color .15s, background .15s;
+  }
+  .pdf-drop.dragover { border-color: #4B5D67; background: #eef3f5; }
+  .pdf-drop-idle, .pdf-drop-loading {
+    display: flex; align-items: center; gap: 0.7rem; font-size: 0.83rem; color: #666;
+  }
+  .pdf-drop-icon { font-size: 1.2rem; }
+  .pdf-drop-btn {
+    margin-left: auto; padding: 0.35rem 0.85rem; border: 1px solid #4B5D67;
+    background: #fff; color: #4B5D67; border-radius: 6px; font-size: 0.78rem;
+    font-weight: 600; cursor: pointer; transition: background .15s;
+  }
+  .pdf-drop-btn:hover { background: #eef3f5; }
+  .pdf-drop-result .pdf-drop-row {
+    display: flex; align-items: center; gap: 0.7rem;
+  }
+  .pdf-drop-result .pdf-drop-row > div:nth-of-type(1) { flex: 1; font-size: 0.83rem; }
+  .pdf-drop-summary { font-size: 0.74rem; color: #888; margin-top: 0.15rem; }
+  .pdf-drop-clear {
+    width: 24px; height: 24px; border-radius: 50%; border: none; background: #eee;
+    color: #666; font-size: 1rem; line-height: 1; cursor: pointer; transition: background .15s;
+  }
+  .pdf-drop-clear:hover { background: #fdecea; color: #c0392b; }
+  .pdf-drop-error {
+    margin-top: 0.4rem; font-size: 0.78rem; color: #c0392b;
+    background: #fdecea; border: 1px solid #f5c6c0; border-radius: 6px;
+    padding: 0.4rem 0.6rem;
+  }
 
   /* CV / Anschreiben snapshot expanders */
   .cv-snap-details {
@@ -494,7 +690,9 @@
   <span>Gemini Flash</span>
   <nav class="view-nav">
     <button class="view-btn active" id="navGenerator" onclick="showView('generator')">Generator</button>
+    <button class="view-btn" id="navProfile" onclick="showView('profile')">Profil</button>
     <button class="view-btn" id="navApplications" onclick="showView('applications')">Bewerbungen <span class="view-badge" id="appsCountBadge">0</span></button>
+    <button class="view-btn" id="navStats" onclick="showView('stats')">📊 Statistik</button>
     <button class="view-btn" id="navSettings" onclick="showView('settings')">⚙️ Einstellungen</button>
   </nav>
 </header>
@@ -641,72 +839,6 @@
 
       <hr class="div">
 
-      <!-- Experience -->
-      <div class="collapsible-header" onclick="toggleSection('experience')">
-        <span class="slabel" style="margin-bottom:0">Berufserfahrung</span>
-        <span class="chevron" id="chevron-experience">▼</span>
-      </div>
-      <div class="collapsible-body" id="body-experience">
-        <div id="experienceList"></div>
-        <button class="add-proj-btn" onclick="openEntryModal('experience')">+ Stelle hinzufügen</button>
-      </div>
-
-      <hr class="div">
-
-      <!-- Education -->
-      <div class="collapsible-header" onclick="toggleSection('education')">
-        <span class="slabel" style="margin-bottom:0">Ausbildung</span>
-        <span class="chevron" id="chevron-education">▼</span>
-      </div>
-      <div class="collapsible-body" id="body-education">
-        <div id="educationList"></div>
-        <button class="add-proj-btn" onclick="openEntryModal('education')">+ Eintrag hinzufügen</button>
-      </div>
-
-      <hr class="div">
-
-      <!-- Skills -->
-      <div class="collapsible-header" onclick="toggleSection('skills')">
-        <span class="slabel" style="margin-bottom:0">Skills & Sprachen</span>
-        <span class="chevron" id="chevron-skills">▼</span>
-      </div>
-      <div class="collapsible-body" id="body-skills">
-        <label style="font-size:0.72rem;margin-bottom:0.2rem">Hard Skills</label>
-        <div class="skill-add-row">
-          <input type="text" id="hardSkillInput" placeholder="z.B. React, SQL, Figma" onkeydown="if(event.key==='Enter'){event.preventDefault();addSkill('hard_skills');}"/>
-          <button class="skill-add-btn" onclick="addSkill('hard_skills')">+</button>
-        </div>
-        <div class="skill-tags" id="hardSkillsList"></div>
-
-        <label style="font-size:0.72rem;margin-bottom:0.2rem">Soft Skills</label>
-        <div class="skill-add-row">
-          <input type="text" id="softSkillInput" placeholder="z.B. Teamfähigkeit, Ownership" onkeydown="if(event.key==='Enter'){event.preventDefault();addSkill('soft_skills');}"/>
-          <button class="skill-add-btn" onclick="addSkill('soft_skills')">+</button>
-        </div>
-        <div class="skill-tags" id="softSkillsList"></div>
-
-        <label style="font-size:0.72rem;margin-bottom:0.2rem">Sprachen</label>
-        <div class="skill-add-row">
-          <input type="text" id="languageInput" placeholder="Sprache (z.B. Englisch)"/>
-          <input type="text" id="languageLevelInput" placeholder="Level (z.B. C1)" onkeydown="if(event.key==='Enter'){event.preventDefault();addLanguage();}"/>
-          <button class="skill-add-btn" onclick="addLanguage()">+</button>
-        </div>
-        <div class="skill-tags" id="languagesList"></div>
-      </div>
-
-      <hr class="div">
-
-      <!-- Projects -->
-      <div class="collapsible-header" onclick="toggleSection('projects')">
-        <span class="slabel" style="margin-bottom:0">Projekte verwalten</span>
-        <span class="chevron" id="chevron-projects">▼</span>
-      </div>
-      <div class="collapsible-body" id="body-projects">
-        <div id="projectsList"></div>
-        <button class="add-proj-btn" onclick="openAddModal()">+ Neues Projekt</button>
-      </div>
-
-      <hr class="div">
       <span class="slabel">Generieren</span>
       <div class="doc-type-group">
         <div class="doc-btn active" data-value="both" onclick="selectDocType(this)">Beide</div>
@@ -864,6 +996,92 @@
   </div>
 </div>
 
+<!-- PROFILE VIEW -->
+<div id="profileView" style="display:none">
+  <div class="profile-wrap">
+    <div class="apps-toolbar" style="margin-bottom:1.2rem">
+      <div>
+        <h2 class="apps-title">Profil</h2>
+        <p class="apps-sub">Berufserfahrung, Ausbildung, Skills und Projekte für deinen Lebenslauf.</p>
+      </div>
+    </div>
+    <div class="profile-section">
+      <div class="collapsible-header" onclick="toggleSection('experience')">
+        <span class="slabel" style="margin-bottom:0">Berufserfahrung</span>
+        <span class="chevron open" id="chevron-experience">▼</span>
+      </div>
+      <div class="collapsible-body open" id="body-experience">
+        <div id="experienceList"></div>
+        <button class="add-proj-btn" onclick="openEntryModal('experience')">+ Stelle hinzufügen</button>
+      </div>
+    </div>
+
+    <div class="profile-section">
+      <div class="collapsible-header" onclick="toggleSection('education')">
+        <span class="slabel" style="margin-bottom:0">Ausbildung</span>
+        <span class="chevron open" id="chevron-education">▼</span>
+      </div>
+      <div class="collapsible-body open" id="body-education">
+        <div id="educationList"></div>
+        <button class="add-proj-btn" onclick="openEntryModal('education')">+ Eintrag hinzufügen</button>
+      </div>
+    </div>
+
+    <div class="profile-section">
+      <div class="collapsible-header" onclick="toggleSection('skills')">
+        <span class="slabel" style="margin-bottom:0">Skills & Sprachen</span>
+        <span class="chevron open" id="chevron-skills">▼</span>
+      </div>
+      <div class="collapsible-body open" id="body-skills">
+        <label style="font-size:0.72rem;margin-bottom:0.2rem">Hard Skills</label>
+        <div class="skill-add-row">
+          <input type="text" id="hardSkillInput" placeholder="z.B. React, SQL, Figma" onkeydown="if(event.key==='Enter'){event.preventDefault();addSkill('hard_skills');}"/>
+          <button class="skill-add-btn" onclick="addSkill('hard_skills')">+</button>
+        </div>
+        <div class="skill-tags" id="hardSkillsList"></div>
+        <label style="font-size:0.72rem;margin-bottom:0.2rem">Soft Skills</label>
+        <div class="skill-add-row">
+          <input type="text" id="softSkillInput" placeholder="z.B. Teamfähigkeit, Ownership" onkeydown="if(event.key==='Enter'){event.preventDefault();addSkill('soft_skills');}"/>
+          <button class="skill-add-btn" onclick="addSkill('soft_skills')">+</button>
+        </div>
+        <div class="skill-tags" id="softSkillsList"></div>
+        <label style="font-size:0.72rem;margin-bottom:0.2rem">Sprachen</label>
+        <div class="skill-add-row">
+          <input type="text" id="languageInput" placeholder="Sprache (z.B. Englisch)"/>
+          <input type="text" id="languageLevelInput" placeholder="Level (z.B. C1)" onkeydown="if(event.key==='Enter'){event.preventDefault();addLanguage();}"/>
+          <button class="skill-add-btn" onclick="addLanguage()">+</button>
+        </div>
+        <div class="skill-tags" id="languagesList"></div>
+      </div>
+    </div>
+
+    <div class="profile-section">
+      <div class="collapsible-header" onclick="toggleSection('projects')">
+        <span class="slabel" style="margin-bottom:0">Projekte verwalten</span>
+        <span class="chevron open" id="chevron-projects">▼</span>
+      </div>
+      <div class="collapsible-body open" id="body-projects">
+        <div id="projectsList"></div>
+        <button class="add-proj-btn" onclick="openAddModal()">+ Neues Projekt</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- STATS VIEW -->
+<div id="statsView" style="display:none">
+  <div class="stats-wrap">
+    <div class="apps-toolbar" style="margin-bottom:1.2rem">
+      <div>
+        <h2 class="apps-title">Statistik</h2>
+        <p class="apps-sub" id="statsSub">Lade Bewerbungen…</p>
+      </div>
+    </div>
+    <div id="statsBody"></div>
+  </div>
+</div>
+
 <!-- APPLICATIONS VIEW -->
 <div id="applicationsView" style="display:none">
   <div class="apps-wrap">
@@ -874,7 +1092,26 @@
       </div>
       <button class="apps-add-btn" onclick="openApplicationModal()">+ Bewerbung hinzufügen</button>
     </div>
+    <div class="apps-filters" id="appsFilters">
+      <div class="apps-filter-group">
+        <label for="appsFilterStage">Status</label>
+        <select id="appsFilterStage" onchange="onAppsFilterChange()">
+          <option value="">Alle</option>
+        </select>
+      </div>
+      <div class="apps-filter-group">
+        <label for="appsFilterSort">Sortierung</label>
+        <select id="appsFilterSort" onchange="onAppsFilterChange()">
+          <option value="updated_desc">Zuletzt bearbeitet</option>
+          <option value="applied_desc">Bewerbungsdatum (neueste)</option>
+          <option value="applied_asc">Bewerbungsdatum (älteste)</option>
+          <option value="company_asc">Firma (A–Z)</option>
+        </select>
+      </div>
+      <span class="apps-filter-count" id="appsFilterCount"></span>
+    </div>
     <div class="apps-list" id="applicationsList"></div>
+
   </div>
 </div>
 
@@ -950,10 +1187,51 @@
         <input type="date" id="appModalAppliedAt" style="color:#2c3e50"/>
       </div>
     </div>
+
+    <div class="form-group">
+      <label>Link zur Stellenausschreibung <span class="opt">(opt.)</span></label>
+      <input type="url" id="appModalJobUrl" placeholder="https://www.stepstone.de/job/..."/>
+    </div>
+    <div class="form-group">
+      <label>Stellenausschreibung (Text) <span class="opt">(wird beim Generieren gespeichert)</span></label>
+      <textarea id="appModalJobPosting" rows="5" placeholder="Text der Ausschreibung…"></textarea>
+    </div>
+    <div class="form-group" id="appModalRejectedWrap" style="display:none">
+      <label>Abgesagt am <span class="opt">(Datum der Absage)</span></label>
+      <input type="date" id="appModalRejectedAt" style="color:#2c3e50"/>
+    </div>
     <div class="form-group">
       <label>Feedback / Notizen <span class="opt">(opt.)</span></label>
       <textarea id="appModalFeedback" rows="4" placeholder="z.B. Recruiter-Gespräch am 22.05., positiv…"></textarea>
     </div>
+
+    <div class="form-group">
+      <label>CV als PDF anhängen <span class="opt">(opt. — speichert Skills, Projekte &amp; Text dieser Bewerbung)</span></label>
+      <div class="pdf-drop" id="appModalPdfDrop">
+        <input type="file" id="appModalPdfFile" accept=".pdf,application/pdf" style="display:none" onchange="onPdfPicked(event)"/>
+        <div class="pdf-drop-idle" id="appModalPdfIdle">
+          <span class="pdf-drop-icon">📎</span>
+          <span><strong>PDF auswählen</strong> oder hierher ziehen</span>
+          <button type="button" class="pdf-drop-btn" onclick="document.getElementById('appModalPdfFile').click()">Datei wählen</button>
+        </div>
+        <div class="pdf-drop-loading" id="appModalPdfLoading" style="display:none">
+          <span class="pdf-drop-icon">⏳</span>
+          <span>Analysiere PDF mit Gemini…</span>
+        </div>
+        <div class="pdf-drop-result" id="appModalPdfResult" style="display:none">
+          <div class="pdf-drop-row">
+            <span class="pdf-drop-icon">✅</span>
+            <div>
+              <div><strong id="appModalPdfFileName"></strong></div>
+              <div class="pdf-drop-summary" id="appModalPdfSummary"></div>
+            </div>
+            <button type="button" class="pdf-drop-clear" onclick="clearPdfSelection()" title="PDF entfernen">×</button>
+          </div>
+        </div>
+        <div class="pdf-drop-error" id="appModalPdfError" style="display:none"></div>
+      </div>
+    </div>
+
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeApplicationModal()">Abbrechen</button>
       <button class="btn-save" onclick="saveApplicationFromModal()">Speichern</button>
@@ -1125,12 +1403,25 @@
   // ── View switching (Generator ↔ Bewerbungen ↔ Einstellungen) ──
   function showView(view) {
     document.getElementById('generatorView').style.display    = view === 'generator'    ? 'grid'  : 'none';
+    document.getElementById('profileView').style.display      = view === 'profile'      ? 'block' : 'none';
     document.getElementById('applicationsView').style.display = view === 'applications' ? 'block' : 'none';
+    document.getElementById('statsView').style.display        = view === 'stats'        ? 'block' : 'none';
     document.getElementById('settingsView').style.display     = view === 'settings'     ? 'block' : 'none';
     document.getElementById('navGenerator').classList.toggle('active',    view === 'generator');
+    document.getElementById('navProfile').classList.toggle('active',      view === 'profile');
     document.getElementById('navApplications').classList.toggle('active', view === 'applications');
+    document.getElementById('navStats').classList.toggle('active',        view === 'stats');
     document.getElementById('navSettings').classList.toggle('active',     view === 'settings');
     if (view === 'applications') renderApplications();
+    if (view === 'profile') refreshProfileView();
+    if (view === 'stats') renderStats();
+  }
+
+  function refreshProfileView() {
+    renderProjects();
+    renderEntries('experience');
+    renderEntries('education');
+    renderSkills();
   }
 
   // ── Settings ──
@@ -1235,6 +1526,422 @@
     return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()}`;
   }
 
+  function getRejectedDateForInput(app) {
+    if (!app || app.stage !== 'rejected') return '';
+    const rejectedAt = (app.stage_history || []).slice().reverse().find(h => h.stage === 'rejected');
+    if (!rejectedAt || !rejectedAt.at) return '';
+    const iso = String(rejectedAt.at);
+    return iso.length >= 10 ? iso.slice(0, 10) : '';
+  }
+
+  function syncAppModalRejectedVisibility() {
+    const wrap = document.getElementById('appModalRejectedWrap');
+    if (!wrap) return;
+    const stage = document.getElementById('appModalStage').value;
+    wrap.style.display = stage === 'rejected' ? 'block' : 'none';
+  }
+
+
+  function plainJobPostingText(raw) {
+    if (!raw) return '';
+    const s = String(raw).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+    return s;
+  }
+
+  function jobPostingPreview(raw, maxSentences = 3) {
+    const plain = plainJobPostingText(raw);
+    if (!plain) return { preview: '', hasMore: false };
+    const sentences = plain.match(/[^.!?…]+[.!?…]+|[^.!?…]+$/g) || [plain];
+    const taken = sentences.slice(0, maxSentences).join(' ').trim();
+    const hasMore = sentences.length > maxSentences || plain.length > taken.length + 8;
+    return { preview: taken, hasMore };
+  }
+
+  function initAppsFilterControls() {
+    const sel = document.getElementById('appsFilterStage');
+    if (!sel || sel.options.length > 1) return;
+    APP_STAGES.forEach(s => {
+      const o = document.createElement('option');
+      o.value = s.key;
+      o.textContent = s.label;
+      sel.appendChild(o);
+    });
+  }
+
+  function onAppsFilterChange() {
+    renderApplications();
+  }
+
+  // ── Statistics ──
+  function isoToDate(s) {
+    if (!s) return null;
+    const d = new Date(s);
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  function daysBetween(a, b) {
+    if (!a || !b) return null;
+    return Math.round((b.getTime() - a.getTime()) / 86_400_000);
+  }
+
+  function median(nums) {
+    const arr = nums.filter(n => Number.isFinite(n)).slice().sort((a, b) => a - b);
+    if (!arr.length) return null;
+    const mid = Math.floor(arr.length / 2);
+    return arr.length % 2 ? arr[mid] : Math.round((arr[mid - 1] + arr[mid]) / 2);
+  }
+
+  function highestReachedIdx(app) {
+    const hist = app.stage_history || [];
+    let maxIdx = -1;
+    hist.forEach(h => {
+      const idx = LINEAR_STAGES.findIndex(s => s.key === h.stage);
+      if (idx > maxIdx) maxIdx = idx;
+    });
+    if (app.stage && app.stage !== 'rejected') {
+      const cur = LINEAR_STAGES.findIndex(s => s.key === app.stage);
+      if (cur > maxIdx) maxIdx = cur;
+    }
+    return maxIdx;
+  }
+
+  function firstEventAt(app, stageKey) {
+    const hit = (app.stage_history || []).find(h => h.stage === stageKey);
+    return hit ? isoToDate(hit.at) : null;
+  }
+
+  function lastEventAt(app, stageKey) {
+    const arr = (app.stage_history || []).filter(h => h.stage === stageKey);
+    return arr.length ? isoToDate(arr[arr.length - 1].at) : null;
+  }
+
+  function monthKey(date) {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+  }
+
+  function monthLabel(key) {
+    const [y, m] = key.split('-');
+    const months = ['Jan', 'Feb', 'Mrz', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'];
+    return `${months[parseInt(m, 10) - 1]}\n${y.slice(2)}`;
+  }
+
+  function computeStats(apps) {
+    const total = apps.length;
+    const reached = LINEAR_STAGES.map(() => 0);
+    apps.forEach(a => {
+      const top = highestReachedIdx(a);
+      for (let i = 0; i <= top; i++) reached[i] += 1;
+    });
+
+    const sentCount = reached[LINEAR_STAGES.findIndex(s => s.key === 'application_sent')] || 0;
+    const interview1 = reached[LINEAR_STAGES.findIndex(s => s.key === 'interview_1')] || 0;
+    const interview2 = reached[LINEAR_STAGES.findIndex(s => s.key === 'interview_2')] || 0;
+    const interview3 = reached[LINEAR_STAGES.findIndex(s => s.key === 'interview_3')] || 0;
+
+    const rejectedTotal = apps.filter(a => a.stage === 'rejected').length;
+    const openCount = apps.filter(a =>
+      a.stage !== 'rejected' && a.stage !== 'documents_created'
+    ).length;
+    const inInterview = apps.filter(a => {
+      if (a.stage === 'rejected') return false;
+      const top = highestReachedIdx(a);
+      return top >= LINEAR_STAGES.findIndex(s => s.key === 'interview_1');
+    }).length;
+
+    const stageDistribution = APP_STAGES.map(s => ({
+      key: s.key,
+      label: s.label,
+      count: apps.filter(a => a.stage === s.key).length,
+    }));
+
+    // Median days between stages
+    const sentToInterview = [];
+    const sentToRejected = [];
+    const interviewToOffer = [];
+    apps.forEach(a => {
+      const sent = firstEventAt(a, 'application_sent') || isoToDate(a.applied_at);
+      const iv1 = firstEventAt(a, 'interview_1');
+      const iv2 = firstEventAt(a, 'interview_2');
+      if (sent && iv1) {
+        const d = daysBetween(sent, iv1);
+        if (d != null && d >= 0) sentToInterview.push(d);
+      }
+      if (iv1 && iv2) {
+        const d = daysBetween(iv1, iv2);
+        if (d != null && d >= 0) interviewToOffer.push(d);
+      }
+      if (a.stage === 'rejected') {
+        const rej = lastEventAt(a, 'rejected');
+        if (sent && rej) {
+          const d = daysBetween(sent, rej);
+          if (d != null && d >= 0) sentToRejected.push(d);
+        }
+      }
+    });
+
+    // Monthly trend (last 6 months, anchored to applied_at, fallback created_at)
+    const months = {};
+    const now = new Date();
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      months[monthKey(d)] = 0;
+    }
+    apps.forEach(a => {
+      const when = isoToDate(a.applied_at) || isoToDate(a.created_at);
+      if (!when) return;
+      const key = monthKey(when);
+      if (key in months) months[key] += 1;
+    });
+
+    // Rates
+    const interviewRate = sentCount ? Math.round((interview1 / sentCount) * 100) : null;
+    const offerRate     = interview1 ? Math.round((interview2 / interview1) * 100) : null;
+    const responsesAfterSent = apps.filter(a => {
+      if (a.stage === 'rejected') {
+        // counted as response only if sent had been reached
+        const top = Math.max(highestReachedIdx(a), 0);
+        return top >= LINEAR_STAGES.findIndex(s => s.key === 'application_sent');
+      }
+      const top = highestReachedIdx(a);
+      return top >= LINEAR_STAGES.findIndex(s => s.key === 'interview_1');
+    }).length;
+    const responseRate = sentCount ? Math.round((responsesAfterSent / sentCount) * 100) : null;
+
+    return {
+      total, sentCount, interview1, interview2, interview3,
+      rejectedTotal, openCount, inInterview,
+      stageDistribution, reached,
+      months,
+      medSentToInterview: median(sentToInterview),
+      medInterviewToFollow: median(interviewToOffer),
+      medSentToRejected: median(sentToRejected),
+      interviewRate, offerRate, responseRate,
+    };
+  }
+
+  function renderStats() {
+    const sub  = document.getElementById('statsSub');
+    const body = document.getElementById('statsBody');
+    if (!body) return;
+    if (!applications.length) {
+      sub.textContent = 'Noch keine Bewerbungen erfasst.';
+      body.innerHTML = '<div class="stats-empty">Sobald du Bewerbungen anlegst oder generierst, erscheinen hier Auswertungen.</div>';
+      return;
+    }
+    const s = computeStats(applications);
+    sub.textContent = `${s.total} ${s.total === 1 ? 'Bewerbung' : 'Bewerbungen'} insgesamt · ${s.sentCount} versendet`;
+
+    const fmtPct = v => (v == null ? '–' : `${v} %`);
+    const fmtDays = v => (v == null ? '–' : `${v} Tag${v === 1 ? '' : 'e'}`);
+
+    const kpiHtml = `
+      <div class="stats-kpi-grid">
+        <div class="stats-card accent">
+          <span class="stats-card-label">Gesamt</span>
+          <span class="stats-card-value">${s.total}</span>
+          <span class="stats-card-sub">${s.openCount} aktiv · ${s.rejectedTotal} abgesagt</span>
+        </div>
+        <div class="stats-card">
+          <span class="stats-card-label">Versendet</span>
+          <span class="stats-card-value">${s.sentCount}</span>
+          <span class="stats-card-sub">${s.total ? Math.round(s.sentCount / s.total * 100) : 0} % der Bewerbungen</span>
+        </div>
+        <div class="stats-card success">
+          <span class="stats-card-label">Im Gespräch</span>
+          <span class="stats-card-value">${s.inInterview}</span>
+          <span class="stats-card-sub">aktuell aktiv ab 1. Gespräch</span>
+        </div>
+        <div class="stats-card">
+          <span class="stats-card-label">Antwortquote</span>
+          <span class="stats-card-value">${fmtPct(s.responseRate)}</span>
+          <span class="stats-card-sub">Reaktion auf versendete</span>
+        </div>
+        <div class="stats-card">
+          <span class="stats-card-label">Einladungsquote</span>
+          <span class="stats-card-value">${fmtPct(s.interviewRate)}</span>
+          <span class="stats-card-sub">Versendet → 1. Gespräch</span>
+        </div>
+        <div class="stats-card danger">
+          <span class="stats-card-label">Absagen</span>
+          <span class="stats-card-value">${s.rejectedTotal}</span>
+          <span class="stats-card-sub">${s.total ? Math.round(s.rejectedTotal / s.total * 100) : 0} % der Bewerbungen</span>
+        </div>
+      </div>
+    `;
+
+    // Funnel
+    const funnelMax = Math.max(...s.reached, 1);
+    const funnelHtml = LINEAR_STAGES.map((stage, i) => {
+      const count = s.reached[i];
+      const pctOfTotal = s.total ? Math.round((count / s.total) * 100) : 0;
+      const widthPct = (count / funnelMax) * 100;
+      return `
+        <div class="funnel-row">
+          <div class="funnel-meta">
+            <span>${esc(stage.label)}</span>
+            <span class="funnel-meta-right">${count} · ${pctOfTotal} %</span>
+          </div>
+          <div class="funnel-bar-track">
+            <div class="funnel-bar-fill" style="width:${widthPct}%"></div>
+          </div>
+        </div>`;
+    }).join('');
+
+    // Status donut
+    const palette = {
+      documents_created: '#9aa7b1',
+      application_sent: '#4B5D67',
+      interview_1: '#5b8db8',
+      interview_2: '#3f7ea6',
+      interview_3: '#2e8b57',
+      rejected: '#c0392b',
+    };
+    const totalForDonut = s.stageDistribution.reduce((a, x) => a + x.count, 0);
+    let cursor = 0;
+    const donutSegments = [];
+    s.stageDistribution.forEach(d => {
+      if (!d.count || !totalForDonut) return;
+      const next = cursor + (d.count / totalForDonut) * 360;
+      donutSegments.push(`${palette[d.key]} ${cursor}deg ${next}deg`);
+      cursor = next;
+    });
+    const donutBg = donutSegments.length
+      ? `conic-gradient(${donutSegments.join(', ')})`
+      : '#eef1f4';
+    const legendHtml = s.stageDistribution
+      .filter(d => d.count > 0)
+      .map(d => {
+        const pct = totalForDonut ? Math.round((d.count / totalForDonut) * 100) : 0;
+        return `<div class="donut-legend-row">
+          <span class="legend-swatch" style="background:${palette[d.key]}"></span>
+          <span class="legend-name">${esc(d.label)}</span>
+          <span class="legend-count">${d.count} · ${pct} %</span>
+        </div>`;
+      }).join('') || '<div class="stats-empty" style="padding:1rem">Keine Daten.</div>';
+
+    const donutHtml = `
+      <div class="donut-wrap">
+        <div class="donut" style="background:${donutBg}">
+          <div class="donut-center"><span class="num">${s.total}</span><span class="lbl">Bewerbungen</span></div>
+        </div>
+        <div class="donut-legend">${legendHtml}</div>
+      </div>`;
+
+    // Monthly trend
+    const monthEntries = Object.entries(s.months);
+    const monthMax = Math.max(1, ...monthEntries.map(([, v]) => v));
+    const monthsHtml = monthEntries.map(([k, v]) => {
+      const h = Math.max(2, Math.round((v / monthMax) * 130));
+      return `
+        <div class="month-bar-cell">
+          <div class="month-bar" style="height:${h}px">
+            ${v ? `<span class="month-bar-count">${v}</span>` : ''}
+          </div>
+          <div class="month-bar-label">${esc(monthLabel(k)).replace('\n', '<br>')}</div>
+        </div>`;
+    }).join('');
+
+    // Median time list
+    const medianHtml = `
+      <div class="median-list">
+        <div class="median-row">
+          <div>
+            <div class="median-row-label">Versendet → 1. Gespräch</div>
+            <div class="median-row-meta">Median über alle Bewerbungen mit beiden Events</div>
+          </div>
+          <div class="median-row-value">${fmtDays(s.medSentToInterview)}</div>
+        </div>
+        <div class="median-row">
+          <div>
+            <div class="median-row-label">1. Gespräch → 2. Gespräch</div>
+            <div class="median-row-meta">Wie schnell Folgegespräche kommen</div>
+          </div>
+          <div class="median-row-value">${fmtDays(s.medInterviewToFollow)}</div>
+        </div>
+        <div class="median-row">
+          <div>
+            <div class="median-row-label">Versendet → Absage</div>
+            <div class="median-row-meta">Reaktionszeit bei negativen Entscheidungen</div>
+          </div>
+          <div class="median-row-value warn">${fmtDays(s.medSentToRejected)}</div>
+        </div>
+      </div>`;
+
+    body.innerHTML = `
+      ${kpiHtml}
+      <div class="stats-grid-2">
+        <div class="stats-panel">
+          <div class="stats-panel-title">Bewerbungs-Funnel</div>
+          <div class="stats-panel-sub">Wie viele Bewerbungen erreichen welche Stufe (jeweils kumuliert).</div>
+          ${funnelHtml}
+        </div>
+        <div class="stats-panel">
+          <div class="stats-panel-title">Status-Verteilung</div>
+          <div class="stats-panel-sub">Aktueller Stand aller Bewerbungen.</div>
+          ${donutHtml}
+        </div>
+      </div>
+      <div class="stats-grid-2">
+        <div class="stats-panel">
+          <div class="stats-panel-title">Bewerbungen pro Monat</div>
+          <div class="stats-panel-sub">Basierend auf Bewerbungsdatum (Fallback: Erstellungsdatum) — letzte 6 Monate.</div>
+          <div class="month-bars">${monthsHtml}</div>
+        </div>
+        <div class="stats-panel">
+          <div class="stats-panel-title">Reaktionszeiten</div>
+          <div class="stats-panel-sub">Median in Tagen zwischen den Stufen.</div>
+          ${medianHtml}
+        </div>
+      </div>
+    `;
+  }
+
+  function getFilteredSortedApplications() {
+    const stageFilter = (document.getElementById('appsFilterStage') || {}).value || '';
+    const sortKey = (document.getElementById('appsFilterSort') || {}).value || 'updated_desc';
+    let list = applications.slice();
+    if (stageFilter) {
+      list = list.filter(a => a.stage === stageFilter);
+    }
+    const cmpStr = (a, b) => (a || '').localeCompare(b || '', 'de');
+    const noDate = '\uffff';
+    list.sort((a, b) => {
+      if (sortKey === 'applied_desc') {
+        return cmpStr(b.applied_at || noDate, a.applied_at || noDate);
+      }
+      if (sortKey === 'applied_asc') {
+        const av = a.applied_at || noDate;
+        const bv = b.applied_at || noDate;
+        if (av === noDate && bv !== noDate) return 1;
+        if (bv === noDate && av !== noDate) return -1;
+        return cmpStr(av, bv);
+      }
+      if (sortKey === 'company_asc') {
+        const ac = (a.company || '') + (a.position || '');
+        const bc = (b.company || '') + (b.position || '');
+        return cmpStr(ac, bc);
+      }
+      return cmpStr(b.updated_at || '', a.updated_at || '');
+    });
+    return list;
+  }
+
+  function renderJobPostingBlock(app) {
+    const raw = (app.job_posting || '').trim();
+    if (!raw) return '';
+    const { preview, hasMore } = jobPostingPreview(raw, 3);
+    const full = plainJobPostingText(raw);
+    const suffix = hasMore ? ' …' : '';
+    return `
+      <details class="job-posting-details">
+        <summary>
+          <span class="job-posting-label">Stellenausschreibung</span>
+          <span class="job-posting-preview">${esc(preview)}${suffix}</span>
+        </summary>
+        <div class="job-posting-full">${esc(full)}</div>
+      </details>`;
+  }
+
   function stageIndex(stageKey) {
     const idx = APP_STAGES.findIndex(s => s.key === stageKey);
     return idx < 0 ? 0 : idx;
@@ -1243,17 +1950,27 @@
   function renderApplications() {
     const list = document.getElementById('applicationsList');
     const sub  = document.getElementById('appsSub');
-    sub.textContent = applications.length
-      ? `${applications.length} ${applications.length === 1 ? 'Bewerbung' : 'Bewerbungen'} insgesamt`
+    const countEl = document.getElementById('appsFilterCount');
+    const total = applications.length;
+    sub.textContent = total
+      ? `${total} ${total === 1 ? 'Bewerbung' : 'Bewerbungen'} insgesamt`
       : 'Noch keine Bewerbungen erfasst.';
-    if (!applications.length) {
+    if (!total) {
+      if (countEl) countEl.textContent = '';
       list.innerHTML = '<div class="apps-empty">Klicke auf <strong>Generieren</strong>, um eine Bewerbung automatisch anzulegen, oder füge eine bereits versendete Bewerbung manuell hinzu.</div>';
       return;
     }
-    const sorted = applications.slice().sort((a, b) =>
-      (b.updated_at || '').localeCompare(a.updated_at || '')
-    );
-    list.innerHTML = sorted.map(renderApplicationCard).join('');
+    const filtered = getFilteredSortedApplications();
+    if (countEl) {
+      countEl.textContent = filtered.length === total
+        ? `${filtered.length} angezeigt`
+        : `${filtered.length} von ${total}`;
+    }
+    if (!filtered.length) {
+      list.innerHTML = '<div class="apps-empty">Keine Bewerbungen für diesen Filter.</div>';
+      return;
+    }
+    list.innerHTML = filtered.map(renderApplicationCard).join('');
   }
 
   function durationInCurrentStage(app) {
@@ -1375,6 +2092,10 @@
 
     const title = esc(app.company || '(kein Unternehmen)');
     const pos   = app.position ? `<span class="app-card-pos">— ${esc(app.position)}</span>` : '';
+    const jobUrl = (app.job_url || '').trim();
+    const jobLink = jobUrl
+      ? ` <a class="app-job-link" href="${esc(jobUrl)}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">↗ Ausschreibung</a>`
+      : '';
     const applied = app.applied_at
       ? `<span class="app-meta-pill">📨 Bewerbung: ${formatAppDate(app.applied_at)}</span>`
       : '';
@@ -1398,10 +2119,11 @@
     return `
       <div class="app-card ${isRejected ? 'rejected' : ''}" data-id="${app.id}">
         <div class="app-card-header">
-          <div class="app-card-title">${title} ${pos}</div>
+          <div class="app-card-title">${title} ${pos}${jobLink}</div>
           <div class="app-card-date">${formatAppDate(app.updated_at)}</div>
         </div>
         <div class="app-meta">${applied}${statusPill}</div>
+        ${renderJobPostingBlock(app)}
         <div class="stepper">${stepsHtml}</div>
         ${renderCvSnapshot(app)}
         ${renderAnschreibenSnapshot(app)}
@@ -1468,6 +2190,7 @@
     const res = await fetch('/applications/' + id, { method: 'DELETE' });
     if (!res.ok) return;
     applications = applications.filter(a => a.id !== id);
+    initAppsFilterControls();
     updateAppsCount();
     renderApplications();
   }
@@ -1487,7 +2210,14 @@
     if (stageIsSentOrLater(stage) && !dateEl.value) {
       dateEl.value = todayIso();
     }
+    if (stage === 'rejected') {
+      const rej = document.getElementById('appModalRejectedAt');
+      if (rej && !rej.value) rej.value = todayIso();
+    }
+    syncAppModalRejectedVisibility();
   }
+
+  let appModalPdfCvContent = null; // staged cv_content from PDF parse, sent on save
 
   function openApplicationModal(id) {
     const isEdit = !!id;
@@ -1500,15 +2230,105 @@
       document.getElementById('appModalStage').value     = a.stage      || 'documents_created';
       document.getElementById('appModalFeedback').value  = a.feedback   || '';
       document.getElementById('appModalAppliedAt').value = a.applied_at || '';
+      const urlEl = document.getElementById('appModalJobUrl');
+      const postEl = document.getElementById('appModalJobPosting');
+      if (urlEl) urlEl.value = a.job_url || '';
+      if (postEl) postEl.value = a.job_posting || '';
+      const rejEl = document.getElementById('appModalRejectedAt');
+      if (rejEl) {
+        rejEl.value = a.stage === 'rejected'
+          ? (getRejectedDateForInput(a) || todayIso())
+          : '';
+      }
+      syncAppModalRejectedVisibility();
     } else {
       document.getElementById('appModalCompany').value   = '';
       document.getElementById('appModalPosition').value  = '';
       document.getElementById('appModalStage').value     = 'application_sent';
       document.getElementById('appModalFeedback').value  = '';
       document.getElementById('appModalAppliedAt').value = todayIso();
+      const rejEl = document.getElementById('appModalRejectedAt');
+      if (rejEl) rejEl.value = '';
+      const urlEl = document.getElementById('appModalJobUrl');
+      const postEl = document.getElementById('appModalJobPosting');
+      if (urlEl) urlEl.value = '';
+      if (postEl) postEl.value = '';
+      syncAppModalRejectedVisibility();
     }
+    clearPdfSelection();
+    // Editing existing apps doesn't re-upload PDFs for now — hide the drop zone
+    document.getElementById('appModalPdfDrop').parentElement.style.display = isEdit ? 'none' : '';
     document.getElementById('appModalOverlay').classList.add('open');
   }
+
+  function clearPdfSelection() {
+    appModalPdfCvContent = null;
+    const fileInput = document.getElementById('appModalPdfFile');
+    if (fileInput) fileInput.value = '';
+    document.getElementById('appModalPdfIdle').style.display     = 'flex';
+    document.getElementById('appModalPdfLoading').style.display  = 'none';
+    document.getElementById('appModalPdfResult').style.display   = 'none';
+    document.getElementById('appModalPdfError').style.display    = 'none';
+  }
+
+  function showPdfError(msg) {
+    const el = document.getElementById('appModalPdfError');
+    el.textContent = msg;
+    el.style.display = 'block';
+    document.getElementById('appModalPdfLoading').style.display = 'none';
+  }
+
+  async function onPdfPicked(ev) {
+    const file = ev.target.files && ev.target.files[0];
+    if (!file) return;
+    if (!file.name.toLowerCase().endsWith('.pdf')) {
+      showPdfError('Bitte eine PDF-Datei wählen.');
+      return;
+    }
+    document.getElementById('appModalPdfIdle').style.display     = 'none';
+    document.getElementById('appModalPdfError').style.display    = 'none';
+    document.getElementById('appModalPdfResult').style.display   = 'none';
+    document.getElementById('appModalPdfLoading').style.display  = 'flex';
+
+    const form = new FormData();
+    form.append('file', file);
+    try {
+      const res  = await fetch('/parse-cv-pdf', { method: 'POST', body: form });
+      const data = await res.json();
+      if (!res.ok) { showPdfError(data.error || 'PDF konnte nicht verarbeitet werden.'); return; }
+      appModalPdfCvContent = data.cv_content;
+      const s = data.summary || {};
+      document.getElementById('appModalPdfFileName').textContent = file.name;
+      document.getElementById('appModalPdfSummary').textContent =
+        `${s.experience_count || 0} Erfahrungen · ${s.education_count || 0} Ausbildungen · `
+        + `${s.project_count || 0} Projekte · ${s.skill_count || 0} Skills extrahiert`;
+      document.getElementById('appModalPdfLoading').style.display = 'none';
+      document.getElementById('appModalPdfResult').style.display  = 'block';
+    } catch (e) {
+      showPdfError('Verbindungsfehler: ' + e.message);
+    }
+  }
+
+  // Drag-and-drop onto the drop zone
+  (function wirePdfDnD() {
+    const drop = document.getElementById('appModalPdfDrop');
+    if (!drop) return;
+    ['dragenter', 'dragover'].forEach(ev => drop.addEventListener(ev, e => {
+      e.preventDefault(); drop.classList.add('dragover');
+    }));
+    ['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, e => {
+      e.preventDefault(); drop.classList.remove('dragover');
+    }));
+    drop.addEventListener('drop', e => {
+      const file = e.dataTransfer.files && e.dataTransfer.files[0];
+      if (!file) return;
+      const input = document.getElementById('appModalPdfFile');
+      const dt = new DataTransfer();
+      dt.items.add(file);
+      input.files = dt.files;
+      onPdfPicked({ target: input });
+    });
+  })();
 
   function closeApplicationModal() {
     document.getElementById('appModalOverlay').classList.remove('open');
@@ -1532,7 +2352,14 @@
       stage:      document.getElementById('appModalStage').value,
       feedback:   document.getElementById('appModalFeedback').value,
       applied_at: document.getElementById('appModalAppliedAt').value || null,
+      job_url:    (document.getElementById('appModalJobUrl') || {}).value.trim(),
+      job_posting:(document.getElementById('appModalJobPosting') || {}).value.trim(),
     };
+    const st = payload.stage;
+    if (st === 'rejected') {
+      const rej = document.getElementById('appModalRejectedAt');
+      if (rej && rej.value) payload.rejected_at = rej.value;
+    }
     const url    = id ? '/applications/' + id : '/applications';
     const method = id ? 'PUT' : 'POST';
     const res    = await fetch(url, {
@@ -1706,6 +2533,7 @@
     currentLanguage = document.getElementById('language').value;
     const payload = {
       job_posting:  jobPosting,
+      job_url:      document.getElementById('job_url').value.trim(),
       company:      document.getElementById('company').value,
       position:     document.getElementById('position').value,
       contact:      document.getElementById('contact').value || 'Sehr geehrte Damen und Herren',
