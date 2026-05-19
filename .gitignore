@@ -1,8 +1,9 @@
-/.claude
-/.env
-/.env.example
-/Anschreiben
-/CVS
-/__pycache__
-/data
-/config/cv_personal.json
+.claudemd
+*.db
+.DS_Store
+.env
+Anschreiben*
+*.pdf
+CV*
+app.cyp*
+db.cpy*
