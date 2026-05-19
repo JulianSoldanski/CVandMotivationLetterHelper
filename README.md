@@ -41,7 +41,6 @@ EN. Edit the profile statement, swap experience bullets, toggle projects
 — live preview updates as you go.
 
 
-https://github.com/user-attachments/assets/59d5b5fa-ba97-4d4e-ae2b-8045e06081ed
 
 
 
@@ -57,6 +56,8 @@ the funnel stepper (Erstellt → Versendet → 1./2./3. Gespräch · Abgesagt)
 with per-card timestamps and a per-application snapshot of exactly what
 got sent. The Statistik tab turns the underlying `stage_events` history
 into a funnel chart and time-in-stage averages.
+
+https://github.com/user-attachments/assets/59d5b5fa-ba97-4d4e-ae2b-8045e06081ed
 
 
 
