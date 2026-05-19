@@ -544,6 +544,25 @@
   .queue-btn.danger { color:#c0392b; }
   .queue-btn.danger:hover { background:#fdecea; border-color:#c0392b; }
 
+  .queue-fit-details { margin-top:0.4rem; font-size:0.78rem; }
+  .queue-fit-details summary {
+    cursor:pointer; user-select:none; color:#4B5D67; font-weight:600;
+    padding:0.25rem 0;
+  }
+  .queue-fit-details summary::-webkit-details-marker { display:none; }
+  .queue-fit-details summary::before { content:"▸ "; }
+  .queue-fit-details[open] summary::before { content:"▾ "; }
+  .queue-fit-details ul { margin:0.15rem 0 0.35rem 1.1rem; padding:0; font-size:0.76rem; line-height:1.5; }
+  .queue-fit-details strong { color:#4B5D67; font-size:0.74rem; }
+  .queue-sort-row {
+    display:flex; align-items:center; gap:0.5rem; margin-bottom:0.6rem;
+    font-size:0.78rem; color:#666;
+  }
+  .queue-sort-row select {
+    padding:0.32rem 0.55rem; font-size:0.78rem; border:1px solid #ddd; border-radius:6px;
+    background:#fff;
+  }
+
   .queue-empty {
     background:#fff; border:1px dashed #ddd; border-radius:10px;
     padding:2.2rem 1.5rem; text-align:center; color:#999; font-size:0.88rem;
@@ -735,6 +754,38 @@
 
   /* Stellen-Übersicht (left panel) */
   .stelle-summary { display:flex; flex-direction:column; gap:0.55rem; margin-bottom:0.6rem; }
+  .fit-pill {
+    display:inline-block; padding:0.1rem 0.55rem; border-radius:14px;
+    font-size:0.75rem; font-weight:700; margin-left:0.35rem;
+    background:#e3e6ea; color:#555;
+  }
+  .fit-pill.fit-low  { background:#fdecea; color:#c0392b; border:1px solid #f5c6c0; }
+  .fit-pill.fit-mid  { background:#fff4d6; color:#a86b00; border:1px solid #f0d99a; }
+  .fit-pill.fit-high { background:#dff5e1; color:#1b7a37; border:1px solid #b6e0c0; }
+  .fit-details summary { cursor:pointer; user-select:none; color:#4B5D67; font-weight:600; font-size:0.74rem; margin-top:0.4rem; }
+  .fit-details summary::-webkit-details-marker { display:none; }
+  .fit-details summary::before { content: "▸ "; }
+  .fit-details[open] summary::before { content: "▾ "; }
+  .fit-grid { display:grid; grid-template-columns:1fr 1fr; gap:0.55rem; margin-top:0.35rem; }
+  .fit-grid-title { font-size:0.7rem; font-weight:700; color:#888; margin-bottom:0.2rem; }
+  .fit-grid .stelle-list { font-size:0.76rem; }
+  .stelle-company-meta {
+    display:flex; flex-wrap:wrap; gap:0.4rem; margin-top:0.4rem;
+  }
+  .stelle-company-meta span {
+    background:#eef3f5; color:#4B5D67; border:1px solid #d8e2e6; border-radius:12px;
+    padding:0.14rem 0.5rem; font-size:0.72rem; font-weight:600;
+  }
+  .stelle-company-meta a { color:#3498db; text-decoration:none; }
+  .stelle-company-meta a:hover { text-decoration:underline; }
+  .stelle-source-details ul { font-size:0.74rem; line-height:1.55; }
+  .stelle-source-details ul a { color:#3498db; text-decoration:none; word-break:break-all; }
+  .stelle-source-details ul a:hover { text-decoration:underline; }
+  .kununu-summary {
+    margin-top:0.35rem; font-size:0.76rem; color:#666; font-style:italic;
+    border-left:2px solid #f1c40f; padding-left:0.55rem;
+  }
+
   .stelle-card { background:#fff; border:1px solid #e3e6ea; border-radius:7px; padding:0.55rem 0.7rem; }
   .stelle-card-title { font-size:0.72rem; font-weight:700; color:#4B5D67; margin-bottom:0.3rem; letter-spacing:0.01em; }
   .stelle-card-body { font-size:0.78rem; color:#2c3e50; line-height:1.45; }
@@ -806,6 +857,34 @@
         <hr class="div">
         <span class="slabel">Stellen-Übersicht</span>
         <div class="stelle-summary">
+          <div class="stelle-card" id="stelleFitCard" style="display:none">
+            <div class="stelle-card-title">
+              🎯 Match
+              <span class="fit-pill" id="stelleFitPill"></span>
+            </div>
+            <div class="stelle-card-body" id="stelleFitSummary"></div>
+            <details class="fit-details">
+              <summary>Stärken &amp; Lücken</summary>
+              <div class="fit-grid">
+                <div>
+                  <div class="fit-grid-title">✓ Stärken</div>
+                  <ul class="stelle-list" id="stelleFitStrengths"></ul>
+                </div>
+                <div>
+                  <div class="fit-grid-title">⚠ Lücken</div>
+                  <ul class="stelle-list" id="stelleFitGaps"></ul>
+                </div>
+              </div>
+            </details>
+          </div>
+          <div class="stelle-card" id="stelleCompanyCard" style="display:none">
+            <div class="stelle-card-title">🏢 Firma</div>
+            <div class="stelle-card-body" id="stelleCompanyBody"></div>
+            <details class="stelle-source-details" id="stelleCompanySources" style="display:none">
+              <summary>Quellen</summary>
+              <ul class="stelle-list" id="stelleCompanySourceList"></ul>
+            </details>
+          </div>
           <div class="stelle-card">
             <div class="stelle-card-title">🏢 Was sie machen</div>
             <div class="stelle-card-body" id="stelleDoes"></div>
@@ -1175,6 +1254,15 @@
       <input type="url" id="queueAddUrl" placeholder="https://www.stepstone.de/job/… (URL einfügen + Enter)"/>
       <input type="text" id="queueAddNote" placeholder="Notiz (opt.)" maxlength="200"/>
       <button class="apps-add-btn" onclick="addQueueFromInput()">Hinzufügen</button>
+    </div>
+
+    <div class="queue-sort-row">
+      <label for="queueSortSelect">Sortieren:</label>
+      <select id="queueSortSelect" onchange="setQueueSort(this.value)">
+        <option value="newest">Neueste zuerst</option>
+        <option value="fit-desc">Fit-Score ↓ (beste oben)</option>
+        <option value="fit-asc">Fit-Score ↑</option>
+      </select>
     </div>
 
     <div class="queue-list" id="queueList"></div>
@@ -1548,6 +1636,37 @@
     }[c]));
   }
 
+  let queuePollTimer    = null;
+  let queuePollAttempts = 0;
+  const QUEUE_POLL_MAX  = 25;   // ~100 s total at 4 s intervals — both Gemini calls should resolve well within
+
+  function queueHasPendingEnrichment() {
+    // The background thread sets `enriched_at` when it finishes (success
+    // or failure). That's our only reliable "still working" signal —
+    // fit_score / company_info alone are unreliable because either can
+    // legitimately come back empty.
+    return queue.some(q =>
+      q.status === 'pending' && !q.enriched_at && !q.error
+    );
+  }
+
+  function startQueuePolling() {
+    stopQueuePolling();
+    queuePollAttempts = 0;
+    queuePollTimer = setInterval(async () => {
+      if (activeView !== 'queue') { stopQueuePolling(); return; }
+      queuePollAttempts++;
+      await refreshQueue();
+      if (!queueHasPendingEnrichment() || queuePollAttempts >= QUEUE_POLL_MAX) {
+        stopQueuePolling();
+      }
+    }, 4000);
+  }
+
+  function stopQueuePolling() {
+    if (queuePollTimer) { clearInterval(queuePollTimer); queuePollTimer = null; }
+  }
+
   async function refreshQueue() {
     try {
       const res = await fetch('/queue');
@@ -1557,6 +1676,46 @@
     }
     renderQueue();
     updateQueueBadge();
+    // Kick off polling if there are still items awaiting their score.
+    if (activeView === 'queue' && queueHasPendingEnrichment() && !queuePollTimer) {
+      startQueuePolling();
+    }
+  }
+
+  let queueSort = 'newest';   // 'newest' | 'fit-desc' | 'fit-asc'
+  let lastQueueSig = '';      // skips a re-render when nothing visible changed
+                              // (keeps user-opened <details> from collapsing each poll)
+
+  function setQueueSort(value) {
+    queueSort = value;
+    lastQueueSig = '';        // force a re-render
+    renderQueue();
+  }
+
+  function queueSig() {
+    return queueSort + '|' + queue.map(q => [
+      q.id, q.status, q.error || '',
+      q.fit_score && typeof q.fit_score.score === 'number' ? q.fit_score.score : '',
+      q.company_info ? '1' : '0',
+      q.enriched_at || '',
+    ].join(',')).join(';');
+  }
+
+  function sortQueueItems(items) {
+    const arr = items.slice();
+    if (queueSort === 'fit-desc' || queueSort === 'fit-asc') {
+      const dir = queueSort === 'fit-desc' ? -1 : 1;
+      arr.sort((a, b) => {
+        const sa = (a.fit_score && typeof a.fit_score.score === 'number') ? a.fit_score.score : null;
+        const sb = (b.fit_score && typeof b.fit_score.score === 'number') ? b.fit_score.score : null;
+        // Items without a score sink to the bottom regardless of direction
+        if (sa === null && sb === null) return 0;
+        if (sa === null) return 1;
+        if (sb === null) return -1;
+        return dir * (sa - sb);
+      });
+    }
+    return arr;
   }
 
   function renderQueue() {
@@ -1565,6 +1724,12 @@
     const archBody = document.getElementById('queueArchiveList');
     const sub     = document.getElementById('queueSub');
     if (!list) return;
+
+    // Skip re-render when nothing changed — this preserves any <details>
+    // the user has expanded (otherwise the 4-second poll re-closes them).
+    const sig = queueSig();
+    if (sig === lastQueueSig && list.innerHTML) return;
+    lastQueueSig = sig;
 
     const pending = queue.filter(q => q.status === 'pending');
     const others  = queue.filter(q => q.status !== 'pending');
@@ -1581,7 +1746,7 @@
           oder paste eine URL oben rein.
         </div>`;
     } else {
-      list.innerHTML = pending.map(renderQueueCard).join('');
+      list.innerHTML = sortQueueItems(pending).map(renderQueueCard).join('');
     }
 
     if (others.length === 0) {
@@ -1596,6 +1761,10 @@
 
   function renderQueueCard(q) {
     const title = q.title || domainOf(q.url);
+    const score = (q.fit_score && typeof q.fit_score.score === 'number') ? q.fit_score.score : null;
+    const fitChip = score !== null
+      ? `<span class="fit-pill ${fitTierClass(score)}" title="${escapeHtml(q.fit_score.summary || '')}">🎯 ${score}</span>`
+      : (q.status === 'pending' && !q.error ? '<span class="fit-pill" style="opacity:.55">…</span>' : '');
     const meta  = [
       `<span>${escapeHtml(domainOf(q.url))}</span>`,
       `<span>${timeAgo(q.added_at)}</span>`,
@@ -1604,28 +1773,69 @@
     if (q.status === 'skipped') meta.push('<span>↷ übersprungen</span>');
     if (q.status === 'failed')  meta.push('<span style="color:#c0392b;font-weight:600">⚠ fehlgeschlagen</span>');
 
+    // Re-enrich is offered when the row was processed but came back without
+    // company_info — usually a transient failure or a result of an earlier
+    // bug. Available on any status for explicit user-driven refresh too.
+    const canRetryEnrich = !!q.enriched_at && !q.company_info;
+
     let actions = '';
     if (q.status === 'pending') {
       actions = `
         <button class="queue-btn primary" onclick="openInGenerator('${q.id}')" title="Im Generator öffnen">→ Generieren</button>
+        ${canRetryEnrich ? `<button class="queue-btn" onclick="retryEnrichment('${q.id}')" title="Firmen-Info erneut anfordern">🔄 Firmen-Info</button>` : ''}
         <button class="queue-btn" onclick="markQueueStatus('${q.id}','skipped')" title="Überspringen">↷</button>
         <button class="queue-btn danger" onclick="deleteQueueItem('${q.id}')" title="Löschen">✕</button>
       `;
     } else {
       actions = `
         <button class="queue-btn" onclick="markQueueStatus('${q.id}','pending')" title="Zurück in die Queue">↩</button>
+        ${canRetryEnrich ? `<button class="queue-btn" onclick="retryEnrichment('${q.id}')" title="Firmen-Info erneut anfordern">🔄 Firmen-Info</button>` : ''}
         <button class="queue-btn danger" onclick="deleteQueueItem('${q.id}')" title="Löschen">✕</button>
       `;
+    }
+
+    const fitDetails = score !== null && q.fit_score
+      ? `<details class="queue-fit-details">
+           <summary>🎯 ${score}/100 — ${escapeHtml(q.fit_score.summary || '')}</summary>
+           ${(q.fit_score.strengths || []).length ? `<div><strong>Stärken:</strong><ul>${q.fit_score.strengths.map(s => `<li>${escapeHtml(s)}</li>`).join('')}</ul></div>` : ''}
+           ${(q.fit_score.gaps || []).length      ? `<div><strong>Lücken:</strong><ul>${q.fit_score.gaps.map(s => `<li>${escapeHtml(s)}</li>`).join('')}</ul></div>` : ''}
+         </details>`
+      : '';
+
+    const ci = q.company_info;
+    const hasCompanyInfo = ci && (ci.description || ci.industry || ci.employee_count
+                                  || ci.founded || ci.hq || ci.website || ci.kununu);
+    let companyDetails = '';
+    if (hasCompanyInfo) {
+      const pills = [];
+      if (ci.industry)       pills.push(`<span>🏷 ${escapeHtml(ci.industry)}</span>`);
+      if (ci.employee_count) pills.push(`<span>👥 ${escapeHtml(ci.employee_count)}</span>`);
+      if (ci.founded)        pills.push(`<span>📅 gegr. ${escapeHtml(ci.founded)}</span>`);
+      if (ci.hq)             pills.push(`<span>📍 ${escapeHtml(ci.hq)}</span>`);
+      if (ci.website)        pills.push(`<span>🌐 <a href="${escapeHtml(ci.website)}" target="_blank" rel="noopener">${escapeHtml(ci.website.replace(/^https?:\/\//,'').replace(/\/$/, ''))}</a></span>`);
+      const kununuPill = (ci.kununu && typeof ci.kununu.rating === 'number')
+        ? ` <span class="fit-pill" style="background:#fff4d6;color:#a86b00;border:1px solid #f0d99a">⭐ ${ci.kununu.rating.toFixed(1)}</span>`
+        : '';
+      const summaryLabel = ci.industry || (typeof ci.kununu?.rating === 'number' ? `Kununu ${ci.kununu.rating.toFixed(1)}/5` : 'Firmen-Info');
+      companyDetails = `
+        <details class="queue-fit-details">
+          <summary>🏢 ${escapeHtml(summaryLabel)}${kununuPill}</summary>
+          ${ci.description ? `<div style="margin-top:0.35rem">${escapeHtml(ci.description)}</div>` : ''}
+          ${pills.length ? `<div class="stelle-company-meta" style="margin-top:0.35rem">${pills.join('')}</div>` : ''}
+          ${renderKununuInline(ci.kununu)}
+        </details>`;
     }
 
     return `
       <div class="queue-card ${q.status}">
         <div class="queue-card-body">
-          <div class="queue-card-title">${escapeHtml(title)}</div>
+          <div class="queue-card-title">${fitChip} ${escapeHtml(title)}</div>
           <a class="queue-card-url" href="${escapeHtml(q.url)}" target="_blank" rel="noopener">${escapeHtml(q.url)}</a>
           <div class="queue-card-meta">${meta.join('·&nbsp;')}</div>
           ${q.note ? `<div class="queue-card-note">${escapeHtml(q.note)}</div>` : ''}
           ${q.error ? `<div class="queue-card-err">${escapeHtml(q.error)}</div>` : ''}
+          ${fitDetails}
+          ${companyDetails}
         </div>
         <div class="queue-card-actions">${actions}</div>
       </div>`;
@@ -1646,6 +1856,22 @@
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Hinzufügen fehlgeschlagen.');
       urlEl.value = ''; noteEl.value = '';
+      await refreshQueue();
+    } catch (e) {
+      alert('Fehler: ' + e.message);
+    }
+  }
+
+  async function retryEnrichment(qid) {
+    try {
+      const res = await fetch('/queue/' + encodeURIComponent(qid) + '/enrich', { method: 'POST' });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Enrichment fehlgeschlagen.');
+      }
+      // Force a re-render: the row's enriched_at is null again, so the
+      // poller will pick it up automatically.
+      lastQueueSig = '';
       await refreshQueue();
     } catch (e) {
       alert('Fehler: ' + e.message);
@@ -1721,7 +1947,10 @@
   }
 
   // ── View switching (Generator ↔ Queue ↔ Bewerbungen ↔ Einstellungen) ──
+  let activeView = 'generator';
+
   function showView(view) {
+    activeView = view;
     document.getElementById('generatorView').style.display    = view === 'generator'    ? 'grid'  : 'none';
     document.getElementById('queueView').style.display        = view === 'queue'        ? 'block' : 'none';
     document.getElementById('profileView').style.display      = view === 'profile'      ? 'block' : 'none';
@@ -1734,6 +1963,7 @@
     document.getElementById('navApplications').classList.toggle('active', view === 'applications');
     document.getElementById('navStats').classList.toggle('active',        view === 'stats');
     document.getElementById('navSettings').classList.toggle('active',     view === 'settings');
+    if (view !== 'queue') stopQueuePolling();
     if (view === 'applications') renderApplications();
     if (view === 'queue') refreshQueue();
     if (view === 'profile') refreshProfileView();
@@ -2382,6 +2612,55 @@
     `;
   }
 
+  function renderCompanyInfoSnapshot(app) {
+    const info = app.company_info;
+    if (!info || !(info.description || info.industry || info.employee_count
+                   || info.founded || info.hq || info.website || info.kununu)) {
+      return '';
+    }
+    const pills = [];
+    if (info.industry)       pills.push(`<span>🏷 ${esc(info.industry)}</span>`);
+    if (info.employee_count) pills.push(`<span>👥 ${esc(info.employee_count)}</span>`);
+    if (info.founded)        pills.push(`<span>📅 gegr. ${esc(info.founded)}</span>`);
+    if (info.hq)             pills.push(`<span>📍 ${esc(info.hq)}</span>`);
+    if (info.website)        pills.push(`<span>🌐 <a href="${esc(info.website)}" target="_blank" rel="noopener">${esc(info.website.replace(/^https?:\/\//,'').replace(/\/$/, ''))}</a></span>`);
+    const sources = Array.isArray(info.sources) ? info.sources : [];
+    const sourcesHtml = sources.length
+      ? `<details class="cv-snap-sources"><summary>Quellen</summary><ul>${sources.map(u => `<li><a href="${esc(u)}" target="_blank" rel="noopener">${esc(u)}</a></li>`).join('')}</ul></details>`
+      : '';
+    const kununuSummary = (info.kununu && typeof info.kununu.rating === 'number')
+      ? ` <span class="fit-pill" style="background:#fff4d6;color:#a86b00;border:1px solid #f0d99a">⭐ ${info.kununu.rating.toFixed(1)}</span>`
+      : '';
+    return `
+      <details class="cv-snap-details">
+        <summary>🏢 Firma anzeigen${kununuSummary}</summary>
+        <div class="cv-snap">
+          ${info.description ? `<p>${esc(info.description)}</p>` : ''}
+          ${pills.length ? `<div class="stelle-company-meta" style="margin-top:0.35rem">${pills.join('')}</div>` : ''}
+          ${renderKununuInline(info.kununu)}
+          ${sourcesHtml}
+        </div>
+      </details>
+    `;
+  }
+
+  function renderFitScoreSnapshot(app) {
+    const fit = app.fit_score;
+    if (!fit || typeof fit.score !== 'number') return '';
+    const strengths = Array.isArray(fit.strengths) ? fit.strengths : [];
+    const gaps      = Array.isArray(fit.gaps)      ? fit.gaps      : [];
+    return `
+      <details class="cv-snap-details">
+        <summary>🎯 Match-Score: <span class="fit-pill ${fitTierClass(fit.score)}">${fit.score}/100</span></summary>
+        <div class="cv-snap">
+          ${fit.summary ? `<p>${esc(fit.summary)}</p>` : ''}
+          ${strengths.length ? `<div class="cv-snap-section"><div class="cv-snap-title">✓ Stärken</div><ul>${strengths.map(s => `<li>${esc(s)}</li>`).join('')}</ul></div>` : ''}
+          ${gaps.length     ? `<div class="cv-snap-section"><div class="cv-snap-title">⚠ Lücken</div><ul>${gaps.map(s => `<li>${esc(s)}</li>`).join('')}</ul></div>` : ''}
+        </div>
+      </details>
+    `;
+  }
+
   function renderAnschreibenSnapshot(app) {
     const an = app.anschreiben_content;
     if (!an) return '';
@@ -2467,6 +2746,8 @@
         <div class="app-meta">${applied}${statusPill}</div>
         ${renderJobPostingBlock(app)}
         <div class="stepper">${stepsHtml}</div>
+        ${renderFitScoreSnapshot(app)}
+        ${renderCompanyInfoSnapshot(app)}
         ${renderCvSnapshot(app)}
         ${renderAnschreibenSnapshot(app)}
         <textarea class="app-feedback" id="appFb-${app.id}" placeholder="Feedback / Notizen…">${esc(app.feedback || '')}</textarea>
@@ -2859,6 +3140,98 @@
     document.getElementById('jobOverview').style.display = 'block';
   }
 
+  function fitTierClass(score) {
+    if (typeof score !== 'number' || isNaN(score)) return '';
+    if (score >= 70) return 'fit-high';
+    if (score >= 40) return 'fit-mid';
+    return 'fit-low';
+  }
+
+  function kununuStars(rating) {
+    if (typeof rating !== 'number' || isNaN(rating)) return '';
+    const r    = Math.max(0, Math.min(5, rating));
+    const frac = r - Math.floor(r);
+    // Round to the nearest half-star
+    let full, half;
+    if (frac < 0.25)      { full = Math.floor(r);     half = 0; }
+    else if (frac < 0.75) { full = Math.floor(r);     half = 1; }
+    else                  { full = Math.floor(r) + 1; half = 0; }
+    const empty = Math.max(0, 5 - full - half);
+    return '★'.repeat(full) + (half ? '½' : '') + '☆'.repeat(empty);
+  }
+
+  function renderKununuInline(kununu) {
+    if (!kununu) return '';
+    const parts = [];
+    if (typeof kununu.rating === 'number') {
+      parts.push(`<span>⭐ ${kununu.rating.toFixed(1)}/5 <span style="color:#f1c40f">${kununuStars(kununu.rating)}</span></span>`);
+    }
+    if (kununu.reviews_count) {
+      parts.push(`<span>📝 ${kununu.reviews_count} Reviews</span>`);
+    }
+    if (kununu.url) {
+      parts.push(`<span><a href="${esc(kununu.url)}" target="_blank" rel="noopener">Kununu →</a></span>`);
+    }
+    if (!parts.length) return '';
+    return `
+      <div class="stelle-company-meta" style="margin-top:0.35rem">
+        ${parts.join('')}
+      </div>
+      ${kununu.summary ? `<div class="kununu-summary">„${esc(kununu.summary)}"</div>` : ''}
+    `;
+  }
+
+  function renderFitScoreCard(fit) {
+    const card = document.getElementById('stelleFitCard');
+    if (!fit || typeof fit.score !== 'number') {
+      card.style.display = 'none'; return;
+    }
+    const pill = document.getElementById('stelleFitPill');
+    pill.textContent = `${fit.score}/100`;
+    pill.className = 'fit-pill ' + fitTierClass(fit.score);
+    document.getElementById('stelleFitSummary').textContent = fit.summary || '';
+    const strengths = Array.isArray(fit.strengths) ? fit.strengths : [];
+    const gaps      = Array.isArray(fit.gaps)      ? fit.gaps      : [];
+    document.getElementById('stelleFitStrengths').innerHTML = strengths.length
+      ? strengths.map(s => `<li>${esc(s)}</li>`).join('')
+      : '<li style="color:#999;font-style:italic;list-style:none;margin-left:-0.95rem">–</li>';
+    document.getElementById('stelleFitGaps').innerHTML = gaps.length
+      ? gaps.map(s => `<li>${esc(s)}</li>`).join('')
+      : '<li style="color:#999;font-style:italic;list-style:none;margin-left:-0.95rem">Keine relevanten Lücken erkannt.</li>';
+    card.style.display = '';
+  }
+
+  function renderCompanyInfoCard(info) {
+    const card = document.getElementById('stelleCompanyCard');
+    const hasAny = info && (info.description || info.industry || info.employee_count
+                            || info.founded || info.hq || info.website || info.kununu);
+    if (!hasAny) {
+      card.style.display = 'none'; return;
+    }
+    const body = document.getElementById('stelleCompanyBody');
+    const metaPills = [];
+    if (info.industry)       metaPills.push(`<span>🏷 ${esc(info.industry)}</span>`);
+    if (info.employee_count) metaPills.push(`<span>👥 ${esc(info.employee_count)}</span>`);
+    if (info.founded)        metaPills.push(`<span>📅 gegr. ${esc(info.founded)}</span>`);
+    if (info.hq)             metaPills.push(`<span>📍 ${esc(info.hq)}</span>`);
+    if (info.website)        metaPills.push(`<span>🌐 <a href="${esc(info.website)}" target="_blank" rel="noopener">${esc(info.website.replace(/^https?:\/\//,'').replace(/\/$/, ''))}</a></span>`);
+    body.innerHTML =
+      (info.description ? `<div>${esc(info.description)}</div>` : '') +
+      (metaPills.length ? `<div class="stelle-company-meta">${metaPills.join('')}</div>` : '') +
+      renderKununuInline(info.kununu);
+
+    const sources = Array.isArray(info.sources) ? info.sources : [];
+    const srcCard = document.getElementById('stelleCompanySources');
+    if (sources.length) {
+      document.getElementById('stelleCompanySourceList').innerHTML =
+        sources.map(u => `<li><a href="${esc(u)}" target="_blank" rel="noopener">${esc(u)}</a></li>`).join('');
+      srcCard.style.display = '';
+    } else {
+      srcCard.style.display = 'none';
+    }
+    card.style.display = '';
+  }
+
   function setDoc(type, html) {
     generatedDocs[type] = html;
     const iframe = document.getElementById('iframe-' + type);
@@ -2897,6 +3270,8 @@
       if (data.cv_content)          { generatedContent.cv = data.cv_content; buildCvEditor(data.cv_content); }
       if (data.anschreiben_content) { generatedContent.anschreiben = data.anschreiben_content; buildAnschreibenEditor(data.anschreiben_content); }
       if (data.job_summary)         { renderJobOverview(data.job_summary, data.job_posting || jobPosting); }
+      renderFitScoreCard(data.fit_score || null);
+      renderCompanyInfoCard(data.company_info || null);
       if (data.application) {
         const i = applications.findIndex(a => a.id === data.application.id);
         if (i >= 0) applications[i] = data.application;

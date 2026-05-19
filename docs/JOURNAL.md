@@ -11,6 +11,74 @@ Format per entry:
 
 ---
 
+## 2026-05-19 — Project links on the CV
+
+**Idea.** Projects should be able to carry a URL (GitHub repo, live demo,
+case study) and that link should render in the generated CV — not as a
+separate field, but as a subtle inline reference after the project title.
+
+**Decision.** Add an optional `link` field on each project. In the CV
+HTML, render as `Title (github.com/foo/bar)` with the visible label
+stripped of `https://` and trailing slashes so it doesn't get too noisy.
+The project-manager card also gets a 🔗 quick-action that opens the link
+in a new tab.
+
+**Outcome.**
+- New `link` field on projects in [app.py](../app.py) (`add_project` /
+  `update_project`).
+- CV render hint at [app.py:684-689](../app.py#L684-L689) — link only
+  rendered when present, otherwise no parens.
+- Project card 🔗 button in [templates/index.html:3271-3272](../templates/index.html#L3271-L3272).
+
+---
+
+## 2026-05-19 — Job-posting queue + bookmarklet
+
+**Idea.** I keep stumbling on interesting job postings while browsing and
+losing them in browser tabs / "ich schau später"-WhatsApp messages. I
+want a one-click capture from any page that lands the URL in a central
+to-do list, so I can come back later and Generieren in batch.
+
+**Decision.** A bookmarklet — not a browser extension. Rationale:
+- Zero install friction (drag a button into the bookmarks bar).
+- No browser-store review process.
+- No permissions / no privacy footprint to explain.
+- It's just `javascript:(()=>{ window.open('http://localhost:5050/queue/add?url='+encodeURIComponent(location.href)+'&title='+encodeURIComponent(document.title), '_blank', 'width=420,height=240') })()`
+  — ~one line.
+
+On the backend: new `job_queue` table (`id, url, title, note, status,
+added_at, processed_at, error, application_id`). Status state machine:
+`pending → done | skipped | failed`. URL is normalized (strip
+`utm_*`/tracking params) before dedupe so the same posting from two
+referrals collapses.
+
+`/queue/install` is a tiny standalone HTML page with a draggable styled
+anchor — it generates the bookmarklet inline so the host URL matches
+wherever Flask is bound. `/queue/add` does the actual insert and returns
+a self-closing HTML "Eintrag gespeichert ✓" popup.
+
+In the Queue tab, **→ Generieren** on a pending card opens the saved
+URL in the Generator, prefills the input, and after the generation
+finishes the queue item is silently marked `done` and linked to the
+created application via `application_id`.
+
+**Outcome.**
+- New `job_queue` table + `application_id` FK in [db.py](../db.py).
+- `/queue` GET/POST, `/queue/<id>` PATCH/DELETE, `/queue/add` (bookmarklet
+  target), `/queue/install` (drag-and-drop install page) in
+  [app.py:1595-1771](../app.py#L1595-L1771).
+- New 📥 Queue tab in the header nav with badge count, inline-add row,
+  status cards, archive `<details>` for done/skipped/failed.
+- `markQueueDoneSilently()` ties Generieren completion back to the
+  originating queue item.
+- `applications.job_url` now stores the source URL so the application
+  card links back to the original posting.
+
+**Follow-up.** Could add a "Generate all pending" batch button later, but
+that needs careful UX around AI cost — best left manual for now.
+
+---
+
 ## 2026-05-19 — Persist generated CV/Anschreiben per application
 
 **Idea.** When I click Generieren, an application should be auto-logged, and

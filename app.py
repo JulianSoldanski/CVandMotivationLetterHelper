@@ -4,7 +4,7 @@ import uuid
 import re
 import requests as http_requests
 from bs4 import BeautifulSoup
-from flask import Flask, render_template, request, jsonify, Response
+from flask import Flask, render_template, request, jsonify, Response, make_response
 from google import genai
 from google.genai import types
 from dotenv import load_dotenv
@@ -173,6 +173,8 @@ def log_application(
     job_url: str = "",
     cv_content: dict | None = None,
     anschreiben_content: dict | None = None,
+    company_info: dict | None = None,
+    fit_score: dict | None = None,
     layout_used: str | None = None,
     language: str | None = None,
 ) -> dict | None:
@@ -199,6 +201,10 @@ def log_application(
             existing["cv_content"] = cv_content
         if anschreiben_content is not None:
             existing["anschreiben_content"] = anschreiben_content
+        if company_info is not None:
+            existing["company_info"] = company_info
+        if fit_score is not None:
+            existing["fit_score"] = fit_score
         if layout_used:
             existing["layout_used"] = layout_used
         if language:
@@ -218,6 +224,8 @@ def log_application(
         "job_url":             job_url[:JOB_URL_MAX] if job_url else "",
         "cv_content":          cv_content,
         "anschreiben_content": anschreiben_content,
+        "company_info":        company_info,
+        "fit_score":           fit_score,
         "layout_used":         layout_used,
         "language":            language,
         "created_at":          now,
@@ -406,6 +414,50 @@ def _call_gemini_json(prompt: str, max_tokens: int = 4096) -> dict:
     return json.loads(response.text)
 
 
+def _call_gemini_with_search(prompt: str, max_tokens: int = 2048) -> tuple[str, list[str]]:
+    """Call Gemini with the Google Search grounding tool enabled.
+
+    Returns (raw_text, [citation_urls]). Grounding is mutually exclusive
+    with response_mime_type='application/json' on the API, so callers
+    must extract JSON from the text themselves (strip_code_fence helps).
+
+    `thinking_budget=0` is critical here: on gemini-2.5-flash thinking-mode
+    is on by default and silently consumes tokens before the visible text,
+    which means longer grounded prompts come back empty. Other helpers in
+    this file disable it for the same reason.
+    """
+    client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
+    response = client.models.generate_content(
+        model=GEMINI_MODEL,
+        contents=prompt,
+        config=types.GenerateContentConfig(
+            temperature=0.4,
+            max_output_tokens=max_tokens,
+            tools=[types.Tool(google_search=types.GoogleSearch())],
+            thinking_config=types.ThinkingConfig(thinking_budget=0),
+        ),
+    )
+    citations: list[str] = []
+    try:
+        for cand in (response.candidates or []):
+            gm = getattr(cand, "grounding_metadata", None)
+            if not gm:
+                continue
+            for chunk in (getattr(gm, "grounding_chunks", None) or []):
+                web = getattr(chunk, "web", None)
+                if web and getattr(web, "uri", None):
+                    citations.append(web.uri)
+    except Exception:
+        # Citations are nice-to-have; never let extraction errors break the call.
+        pass
+    # Dedupe while preserving order
+    seen = set(); deduped = []
+    for u in citations:
+        if u not in seen:
+            seen.add(u); deduped.append(u)
+    return (response.text or "", deduped)
+
+
 def generate_cv_content(
     job_posting: str, company: str, position: str,
     language: str, custom_notes: str, projects: list
@@ -512,6 +564,303 @@ Regeln:
 - Keine Floskeln, keine Wiederholungen
 """
     return _call_gemini_json(prompt, 1024)
+
+
+def _extract_json_object(text: str) -> dict | None:
+    """Best-effort JSON extraction from text that may include prose + fences."""
+    text = strip_code_fence(text or "").strip()
+    if not text:
+        return None
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        pass
+    # Fall back: find the first {...} block
+    start = text.find("{")
+    end   = text.rfind("}")
+    if start != -1 and end != -1 and end > start:
+        try:
+            return json.loads(text[start:end + 1])
+        except json.JSONDecodeError:
+            return None
+    return None
+
+
+def extract_company_from_posting(job_posting: str) -> str | None:
+    """Best-effort: pull the company name out of a fetched posting text.
+
+    Reuses the same prompt shape as the /extract-fields route so behavior
+    stays consistent. Returns None if extraction fails or the model is
+    uncertain — caller is expected to handle that gracefully.
+    """
+    if not job_posting.strip():
+        return None
+    prompt = f"""Extrahiere den Firmennamen aus dieser Stellenausschreibung.
+
+STELLENAUSSCHREIBUNG:
+{job_posting[:4000]}
+
+Gib EIN JSON-Objekt zurück: {{ "company": "Firmenname oder null" }}
+"""
+    try:
+        data = _call_gemini_json(prompt, 128)
+    except Exception:
+        return None
+    if not isinstance(data, dict):
+        return None
+    val = data.get("company")
+    if not isinstance(val, str):
+        return None
+    val = val.strip()
+    return val or None
+
+
+def generate_company_info(company: str, position: str, job_posting: str, language: str) -> dict | None:
+    """Two-stage company enrichment:
+
+    1. **Grounded research call** — Gemini + Google Search produces a
+       prose summary of the company (description, employees, founded, HQ,
+       Kununu rating + reviews, etc.) along with citation URLs. The search
+       tool is mutually exclusive with strict JSON output, so the model
+       responds in prose.
+    2. **Non-grounded JSON distillation** — pass that prose plus the
+       posting context into a normal `_call_gemini_json` call that emits
+       the structured shape we store.
+
+    Returns None only when both stages fail or no fields can be filled.
+    Fields the research couldn't substantiate stay null — never invented.
+    """
+    company = (company or "").strip()
+    if not company:
+        return None
+
+    # ── Stage 1: grounded research ────────────────────────────────────
+    # Always English: English search queries return better-indexed results
+    # for company facts (Wikipedia, Crunchbase, LinkedIn, company sites are
+    # all primarily English-indexed). The distillation stage below will
+    # translate / localize into the user's chosen language.
+    research_prompt = f"""Use Google Search to research the company "{company}" briefly.
+
+Reply CONCISELY (no preamble, no repetition) to the following seven points,
+in exactly this order, one point per line with the given prefix:
+
+1) DESCRIPTION: 2 short sentences — industry, product, mission.
+2) EMPLOYEES: a range like "50-200", "1,000-5,000", "10,000+", or "unknown".
+3) FOUNDED: 4-digit year, or "unknown".
+4) HEADQUARTERS: city, country, or "unknown".
+5) WEBSITE: single URL like https://…, or "unknown".
+6) KUNUNU: search explicitly on kununu.com for this employer. If a profile
+   exists, answer "<stars>/5 from <reviews> reviews — <URL>". If not,
+   answer "no profile found".
+7) KUNUNU_SENTIMENT: 1 sentence on what employees praise / criticize, if a
+   Kununu page exists; otherwise "n/a".
+
+Context from a current job posting (use it to disambiguate which company
+this is, especially for common names):
+\"\"\"
+{job_posting[:1500]}
+\"\"\""""
+    try:
+        research_text, sources = _call_gemini_with_search(research_prompt, max_tokens=2048)
+    except Exception as e:
+        print(f"[company_info] grounded research failed: {e}", flush=True)
+        return None
+    if not (research_text or "").strip():
+        print("[company_info] grounded research returned empty text", flush=True)
+        return None
+
+    # ── Stage 2: distill prose → structured JSON ──────────────────────
+    # The research above is English; the distillation translates description
+    # / industry / kununu-summary into the user's language while keeping
+    # neutral fields (URLs, years, ranges, headquarters) as-is.
+    if language == "de":
+        distill_prompt = f"""Aus folgendem englischen Recherche-Text extrahiere strukturierte
+Fakten über das Unternehmen "{company}". Übersetze description, industry und
+kununu.summary ins Deutsche; übernimm URLs, Jahreszahlen und Spannweiten
+unverändert.
+
+RECHERCHE-TEXT (englisch, aus Google-Search-Grounding):
+\"\"\"
+{research_text[:6000]}
+\"\"\"
+
+Gib NUR ein JSON-Objekt mit dieser exakten Struktur zurück:
+
+{{
+  "description":    "2-3 Sätze (Deutsch): Branche, Produkt, Mission",
+  "industry":       "z. B. 'Fintech', 'SaaS', 'E-Mobilität'",
+  "employee_count": "z. B. '200-500', '1.000-5.000', '10.000+' oder null",
+  "founded":        "Gründungsjahr als String (z. B. '2017') oder null",
+  "hq":             "Stadt, Land (z. B. 'Berlin, Deutschland') oder null",
+  "website":        "Hauptwebsite (https://...) oder null",
+  "kununu": {{
+    "rating":        <Float 1.0-5.0> oder null,
+    "reviews_count": <Ganzzahl> oder null,
+    "url":           "kununu-URL oder null",
+    "summary":       "1 Satz Deutsch: was Mitarbeitende loben/kritisieren, oder null"
+  }}
+}}
+
+Regeln:
+- Setze ein Feld auf null, wenn die Recherche es als "unknown" / "no profile
+  found" / "n/a" markiert oder es schlicht nicht nennt.
+- "kununu" als gesamtes Objekt null, wenn keine Sterne in der Recherche stehen.
+- Keine Zahlen erfinden."""
+    else:
+        distill_prompt = f"""Extract structured facts about the company "{company}" from
+the following research text.
+
+RESEARCH TEXT (from Google Search grounding):
+\"\"\"
+{research_text[:6000]}
+\"\"\"
+
+Return ONLY a JSON object with exactly this structure:
+
+{{
+  "description":    "2-3 sentences: industry, product, mission",
+  "industry":       "e.g. 'Fintech', 'SaaS', 'E-Mobility'",
+  "employee_count": "e.g. '200-500', '1,000-5,000', '10,000+' or null",
+  "founded":        "founding year as a string (e.g. '2017') or null",
+  "hq":             "city, country or null",
+  "website":        "main website (https://...) or null",
+  "kununu": {{
+    "rating":        <float 1.0-5.0> or null,
+    "reviews_count": <integer> or null,
+    "url":           "kununu URL or null",
+    "summary":       "1 sentence on praise/criticism, or null"
+  }}
+}}
+
+Rules:
+- Set a field to null when the research marks it 'unknown' / 'no profile
+  found' / 'n/a' or simply doesn't mention it.
+- Set the entire 'kununu' object to null when no Kununu rating is in the
+  research. Don't invent numbers."""
+    try:
+        data = _call_gemini_json(distill_prompt, max_tokens=1024)
+    except Exception as e:
+        print(f"[company_info] distillation failed: {e}", flush=True)
+        return None
+    if not isinstance(data, dict):
+        print(f"[company_info] distillation returned non-dict: {type(data).__name__}", flush=True)
+        return None
+
+    def _clean_str(v):
+        if isinstance(v, str):
+            v = v.strip()
+            if v.lower() in {"null", "none", "n/a", "unbekannt", "unknown", ""}:
+                return None
+            return v
+        return None
+
+    out: dict = {}
+    for key in ("description", "industry", "employee_count", "founded", "hq", "website"):
+        out[key] = _clean_str(data.get(key))
+
+    kununu_raw = data.get("kununu")
+    kununu: dict | None = None
+    if isinstance(kununu_raw, dict):
+        rating = kununu_raw.get("rating")
+        try:
+            rating_f = float(rating) if rating is not None else None
+        except (TypeError, ValueError):
+            rating_f = None
+        if rating_f is not None and not (0.0 <= rating_f <= 5.0):
+            rating_f = None
+        reviews = kununu_raw.get("reviews_count")
+        try:
+            reviews_i = int(reviews) if reviews is not None else None
+        except (TypeError, ValueError):
+            reviews_i = None
+        kununu_url = _clean_str(kununu_raw.get("url"))
+        kununu_summary = _clean_str(kununu_raw.get("summary"))
+        if rating_f is not None or reviews_i or kununu_url or kununu_summary:
+            kununu = {
+                "rating":        rating_f,
+                "reviews_count": reviews_i,
+                "url":           kununu_url,
+                "summary":       kununu_summary,
+            }
+    out["kununu"]     = kununu
+    out["sources"]    = sources[:8]
+    out["fetched_at"] = _now_iso()
+
+    # If literally everything is null, treat as "no info".
+    has_anything = any(out.get(k) for k in
+                       ("description", "industry", "employee_count",
+                        "founded", "hq", "website", "kununu"))
+    return out if has_anything else None
+
+
+def generate_fit_score(
+    profile_text: str,
+    job_posting: str,
+    job_summary: dict | None,
+    language: str,
+) -> dict | None:
+    """Score how well the user's profile matches the posting.
+
+    Returns {score: 0-100, summary, strengths[], gaps[]} or None on failure.
+    """
+    lang = "auf Deutsch" if language == "de" else "in English"
+    js = job_summary or {}
+    searching = js.get("searching_for") or []
+    technologies = js.get("technologies") or []
+    extras = ""
+    if searching:
+        extras += "\nWAS DIE FIRMA SUCHT (bereits extrahiert):\n- " + "\n- ".join(searching[:10])
+    if technologies:
+        extras += "\nGENANNTE TECHNOLOGIEN:\n- " + "\n- ".join(technologies[:20])
+
+    prompt = f"""Bewerte, wie gut der Bewerber zur Stelle passt. Antworte {lang}.
+
+PROFIL DES BEWERBERS:
+{profile_text[:6000]}
+
+STELLENAUSSCHREIBUNG:
+{job_posting[:6000]}
+{extras}
+
+Gib AUSSCHLIESSLICH ein JSON-Objekt zurück:
+{{
+  "score":     <Ganzzahl 0-100>,
+  "summary":   "1 Satz: warum diese Bewertung",
+  "strengths": ["3-5 konkrete Übereinstimmungen (Skill X aus Profil ↔ Anforderung Y aus Posting)"],
+  "gaps":      ["2-4 konkrete Lücken: was die Stelle verlangt, das im Profil fehlt/schwach ist"]
+}}
+
+Regeln:
+- Score-Kalibrierung: 90+ = hervorragender Fit, 70-89 = solide, 50-69 = möglich aber mit Abstrichen,
+  unter 50 = klare Schiefstand. Verzerre NICHT optimistisch.
+- "strengths" und "gaps" müssen KONKRET sein (Skill/Erfahrung/Domain), keine Floskeln.
+- Wenn etwas im Profil und Posting beidseits genannt wird, gehört es zu strengths, nicht zu gaps.
+"""
+    try:
+        data = _call_gemini_json(prompt, 768)
+    except Exception:
+        return None
+    if not isinstance(data, dict):
+        return None
+
+    raw_score = data.get("score")
+    try:
+        score = int(round(float(raw_score)))
+    except (TypeError, ValueError):
+        return None
+    score = max(0, min(100, score))
+
+    def _list_of_strings(val) -> list[str]:
+        if not isinstance(val, list):
+            return []
+        return [s.strip() for s in val if isinstance(s, str) and s.strip()]
+
+    return {
+        "score":     score,
+        "summary":   (data.get("summary") or "").strip(),
+        "strengths": _list_of_strings(data.get("strengths"))[:6],
+        "gaps":      _list_of_strings(data.get("gaps"))[:6],
+    }
 
 
 def generate_anschreiben_content(
@@ -862,7 +1211,34 @@ def render_anschreiben_html(content: dict, language: str) -> str:
 
 @app.route("/")
 def index():
-    return render_template("index.html")
+    # The entire frontend (HTML + CSS + JS) lives inline in this template.
+    # Without no-store, browsers reuse the cached copy across template edits
+    # which manifests as "the new feature I just shipped is invisible in the
+    # UI". For a single-user local dev app the re-fetch cost is trivial.
+    resp = make_response(render_template("index.html"))
+    resp.headers["Cache-Control"] = "no-store"
+    return resp
+
+
+def fetch_job_posting(url: str, timeout: int = 10) -> str:
+    """Fetch + clean a job-posting HTML page into plain text.
+
+    Raises on network/HTTP errors; trims to 12k chars to stay within Gemini
+    context budgets. Shared by /fetch-job, queue-add scoring, etc.
+    """
+    resp = http_requests.get(url, timeout=timeout, headers={
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/120 Safari/537.36"
+    })
+    resp.raise_for_status()
+    soup = BeautifulSoup(resp.text, "html.parser")
+    for tag in soup(["script", "style", "nav", "header", "footer", "aside", "form"]):
+        tag.decompose()
+    text = soup.get_text(separator="\n", strip=True)
+    lines = [l.strip() for l in text.splitlines() if l.strip()]
+    cleaned = "\n".join(lines)
+    if len(cleaned) > 12000:
+        cleaned = cleaned[:12000] + "\n[...]"
+    return cleaned
 
 
 @app.route("/fetch-job", methods=["POST"])
@@ -871,19 +1247,7 @@ def fetch_job():
     if not url:
         return jsonify({"error": "Keine URL angegeben."}), 400
     try:
-        resp = http_requests.get(url, timeout=10, headers={
-            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/120 Safari/537.36"
-        })
-        resp.raise_for_status()
-        soup = BeautifulSoup(resp.text, "html.parser")
-        for tag in soup(["script", "style", "nav", "header", "footer", "aside", "form"]):
-            tag.decompose()
-        text = soup.get_text(separator="\n", strip=True)
-        lines = [l.strip() for l in text.splitlines() if l.strip()]
-        cleaned = "\n".join(lines)
-        if len(cleaned) > 12000:
-            cleaned = cleaned[:12000] + "\n[...]"
-        return jsonify({"text": cleaned})
+        return jsonify({"text": fetch_job_posting(url)})
     except Exception as e:
         return jsonify({"error": f"Konnte URL nicht laden: {str(e)}"}), 500
 
@@ -951,12 +1315,32 @@ def generate():
     except Exception as e:
         return jsonify({"error": f"Gemini-Fehler: {str(e)}"}), 500
 
+    # Fit score and company info are best-effort: if either Gemini call
+    # fails we still want the CV/Anschreiben to ship.
+    try:
+        result["fit_score"] = generate_fit_score(
+            profile_to_text(load_profile()),
+            job_posting,
+            result.get("job_summary"),
+            language,
+        )
+    except Exception:
+        result["fit_score"] = None
+    try:
+        result["company_info"] = generate_company_info(
+            company, position, job_posting, language,
+        )
+    except Exception:
+        result["company_info"] = None
+
     job_url = (data.get("job_url") or "").strip()
     logged = log_application(
         company, position, job_posting,
         job_url=job_url,
         cv_content          = result.get("cv_content"),
         anschreiben_content = result.get("anschreiben_content"),
+        company_info        = result.get("company_info"),
+        fit_score           = result.get("fit_score"),
         layout_used         = resolved_layout,
         language            = language,
     )
@@ -1482,6 +1866,8 @@ def create_application():
             applied_at = _today_iso()
     cv_content          = data.get("cv_content")
     anschreiben_content = data.get("anschreiben_content")
+    company_info        = data.get("company_info")
+    fit_score           = data.get("fit_score")
     entry = {
         "id":                  str(uuid.uuid4())[:8],
         "company":             company,
@@ -1494,6 +1880,8 @@ def create_application():
         "job_url":             (data.get("job_url") or "").strip()[:JOB_URL_MAX],
         "cv_content":          cv_content          if isinstance(cv_content,          dict) else None,
         "anschreiben_content": anschreiben_content if isinstance(anschreiben_content, dict) else None,
+        "company_info":        company_info        if isinstance(company_info,        dict) else None,
+        "fit_score":           fit_score           if isinstance(fit_score,           dict) else None,
         "layout_used":         data.get("layout_used"),
         "language":            data.get("language"),
         "created_at":          now,
@@ -1592,6 +1980,63 @@ def _queue_close_page(message: str, sub: str = "", auto_close: bool = True) -> R
     return Response(html, mimetype="text/html")
 
 
+def _enrich_queue_item_async(qid: str, url: str):
+    """Background: fetch the posting, compute fit_score + company_info,
+    update the queue row.
+
+    Fire-and-forget so the API response (and the bookmarklet's auto-closing
+    popup) isn't blocked by 5-15 s of fetch + Gemini latency. Fit score
+    and company info are computed independently — one failing won't void
+    the other.
+    """
+    import threading
+
+    def _run():
+        try:
+            try:
+                posting = fetch_job_posting(url)
+            except Exception as e:
+                db.update_queue_item(qid, error=f"Fetch fehlgeschlagen: {e}"[:300])
+                return
+            if not os.environ.get("GEMINI_API_KEY"):
+                db.update_queue_item(qid, error="GEMINI_API_KEY nicht gesetzt")
+                return
+
+            # Fit score
+            fit_err = ""
+            try:
+                fit = generate_fit_score(
+                    profile_to_text(load_profile()),
+                    posting,
+                    None,    # no job_summary at queue-time; the prompt handles None
+                    "de",    # queue-time has no language hint — default to German
+                )
+            except Exception as e:
+                fit, fit_err = None, f"Scoring fehlgeschlagen: {e}"
+            if fit:
+                db.update_queue_item(qid, fit_score=fit)
+            elif fit_err:
+                db.update_queue_item(qid, error=fit_err[:300])
+
+            # Company info — independent enrichment.
+            company_name = extract_company_from_posting(posting)
+            if company_name:
+                try:
+                    info = generate_company_info(company_name, "", posting, "de")
+                except Exception:
+                    info = None
+                if info:
+                    db.update_queue_item(qid, company_info=info)
+        finally:
+            # Always mark the enrichment attempt as finished, even on failure —
+            # this is the signal the frontend uses to stop polling. Without
+            # this, items whose company couldn't be extracted (and thus never
+            # got a company_info) would have the queue view polling forever.
+            db.update_queue_item(qid, enriched_at=_now_iso())
+
+    threading.Thread(target=_run, daemon=True).start()
+
+
 @app.route("/queue", methods=["GET"])
 def list_queue_route():
     status = (request.args.get("status") or "").strip() or None
@@ -1621,6 +2066,7 @@ def add_queue_route():
 
     qid = str(uuid.uuid4())[:8]
     item = db.add_queue_item(qid, url, title, note, _now_iso())
+    _enrich_queue_item_async(qid, url)
     return jsonify({"item": item, "duplicate": False}), 201
 
 
@@ -1644,6 +2090,27 @@ def update_queue_route(qid):
         kwargs["application_id"] = (data.get("application_id") or "").strip() or None
     item = db.update_queue_item(qid, **kwargs)
     return jsonify(item)
+
+
+@app.route("/queue/<qid>/enrich", methods=["POST"])
+def reenrich_queue_route(qid):
+    """Re-run the background enrichment for a single queue row.
+
+    Useful when (a) the initial enrichment failed quietly, (b) we improved
+    the prompt and want a fresh result, or (c) the user pasted a URL whose
+    server was temporarily down.
+    """
+    item = db.get_queue_item(qid)
+    if not item:
+        return jsonify({"error": "Queue-Eintrag nicht gefunden."}), 404
+    # Clear sentinels so the polling logic picks the row up again.
+    with db.get_conn() as conn:
+        conn.execute(
+            "UPDATE job_queue SET enriched_at = NULL, error = NULL WHERE id = ?",
+            (qid,),
+        )
+    _enrich_queue_item_async(qid, item["url"])
+    return jsonify({"ok": True})
 
 
 @app.route("/queue/<qid>", methods=["DELETE"])
@@ -1677,6 +2144,7 @@ def queue_add_via_bookmarklet():
 
     qid = str(uuid.uuid4())[:8]
     db.add_queue_item(qid, url, title, "", _now_iso())
+    _enrich_queue_item_async(qid, url)
     return _queue_close_page(
         "Zur Queue hinzugefügt",
         sub=title or url,

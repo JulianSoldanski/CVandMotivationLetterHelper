@@ -17,6 +17,18 @@ https://github.com/user-attachments/assets/cadc29bd-8636-4689-8e2c-d4ec5ad4f9a7
 
 ## What it does
 
+**Queue + Bookmarklet**
+- Hit a `→ Queue` bookmarklet from any job page (StepStone, LinkedIn, etc.)
+  and the URL lands in a central queue. Install once by drag-and-dropping
+  the button from `/queue/install` into your bookmarks bar.
+- Queue view shows pending postings as cards; one click on **→ Generieren**
+  opens the saved URL in the Generator, prefills the input, and
+  auto-marks the queue item as done after generation.
+- Statuses: pending / done / skipped / failed. Done + skipped collapse
+  into an archive section.
+- Inline add (paste URL + optional note + Enter) for cases where the
+  bookmarklet wasn't handy.
+
 **Generator**
 - Paste a job posting or fetch from a URL (StepStone, LinkedIn, …).
 - One click → tailored CV (German or English) in three layouts (Modern /
@@ -27,13 +39,16 @@ https://github.com/user-attachments/assets/cadc29bd-8636-4689-8e2c-d4ec5ad4f9a7
   they're looking for*, *which technologies* — pinned to the left panel
   so it stays visible while you edit on the right.
 - Editor tab: edit the profile statement, swap in/out experience bullets,
-  add/remove projects, tweak skills. Live preview iframe.
+  add/remove projects, tweak skills. Live preview iframe. Projects can carry
+  a link (GitHub, live demo, …) which renders as a clickable inline reference
+  in the CV.
 - Built-in KI-Feedback chat: ask "Was fehlt?", "Welche Keywords?", "Was
   fällt HR zuerst auf?" — Gemini answers with the full document context.
 
 **Bewerbungen (Application tracker)**
 - Every Generieren click auto-logs an application (deduped by company +
-  position).
+  position). The original posting URL is stored too — one click on the card
+  reopens the source.
 - Visual stepper: Erstellt → Versendet → 1. Gespräch → 2. Gespräch → 3.
   Gespräch. Plus a separate **Abgesagt** terminal state.
 - Per-card pills: 📨 application date · ⏱ time-in-current-stage.
@@ -58,6 +73,13 @@ https://github.com/user-attachments/assets/cadc29bd-8636-4689-8e2c-d4ec5ad4f9a7
 ## Why this is interesting
 
 A few things that aren't obvious from the screenshot:
+
+- **Browser-native job capture.** The bookmarklet is the smallest possible
+  integration with the rest of the web — no extension store, no
+  permissions, just a `javascript:` URL the browser already trusts. From
+  any job page it fires a `window.open` to my Flask app's `/queue/add`
+  endpoint, which inserts the URL into the queue and auto-closes the
+  popup. ~60 lines of code total, no third-party services.
 
 - **Two-tier style transfer.** Most AI cover-letter tools just dump an
   example into the prompt. I let Gemini distill the example into editable
@@ -104,21 +126,28 @@ A few things that aren't obvious from the screenshot:
 ## Architecture at a glance
 
 ```
+        ┌───────────────────────────────┐
+        │ Any job site (StepStone, …)   │
+        │   click "→ Queue" bookmarklet │
+        └──────────────┬────────────────┘
+                       │ window.open → /queue/add
+                       ▼
 ┌──────────────────────────────────────────────────────────────┐
 │ Browser (single-page, vanilla JS)                            │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐   │
-│  │ Generator   │  │ Bewerbungen │  │ Einstellungen       │   │
-│  │ + Stellen-  │  │ (tracker)   │  │ (style examples +   │   │
-│  │   Übersicht │  │             │  │  AI-distilled rules)│   │
-│  └─────────────┘  └─────────────┘  └─────────────────────┘   │
+│  ┌──────────┐ ┌────────┐ ┌─────────────┐ ┌──────────────┐    │
+│  │Generator │ │ Queue  │ │ Bewerbungen │ │Einstellungen │    │
+│  │+ Stellen-│ │+ book- │ │  (tracker)  │ │(style examples│   │
+│  │ Übersicht│ │marklet │ │             │ │  + AI rules) │    │
+│  └──────────┘ └────────┘ └─────────────┘ └──────────────┘    │
 └────────────────────────────┬─────────────────────────────────┘
-                             │ /generate, /applications, /settings,
-                             │ /analyze-style, /chat, /improve-text …
+                             │ /generate, /applications, /queue,
+                             │ /settings, /analyze-style, /chat …
 ┌────────────────────────────▼─────────────────────────────────┐
 │ Flask app.py                                                 │
 │  - Routes + request validation                               │
 │  - call_gemini / _call_gemini_json helpers                   │
 │  - Prompt builders for CV, Anschreiben, summary, analysis    │
+│  - /queue/install (bookmarklet drag-and-drop page)           │
 └────┬──────────────────────────────────────────┬──────────────┘
      │                                          │
      ▼                                          ▼
@@ -126,7 +155,7 @@ A few things that aren't obvious from the screenshot:
 │ db.py (SQLite)   │                  │ JSON config files      │
 │  applications    │                  │  profile.json          │
 │  stage_events    │                  │  projects.json         │
-│                  │                  │  settings.json         │
+│  job_queue       │                  │  settings.json         │
 │                  │                  │  cv_personal.json      │
 └──────────────────┘                  └────────────────────────┘
                                                 ▲
@@ -193,6 +222,16 @@ python app.py
 
 Open <http://127.0.0.1:5050>.
 
+### Install the queue bookmarklet (optional)
+
+Visit <http://127.0.0.1:5050/queue/install>, show your bookmarks bar
+(`Cmd+Shift+B` / `Ctrl+Shift+B`), then drag the **→ Queue** button onto
+the bar. From then on, clicking that bookmark on any job page sends the
+URL into your queue.
+
+> Works as long as `python app.py` is running. If you're on an `https://`
+> page and see Mixed-Content warnings, allow them for `localhost`.
+
 ### Migrating from an older version
 
 If you have an existing `data/applications.json` from before the SQLite
@@ -216,8 +255,12 @@ Tracked in [docs/JOURNAL.md](docs/JOURNAL.md) under each entry's
 - **Statistiken tab** — funnel chart, time-in-stage averages,
   interview-rate per role. Backend is ready (`stage_events` is indexed);
   just needs the endpoints and the frontend view.
-- **PDF upload → profile** — drop in an existing CV PDF, have Gemini parse
-  it into experience/education/skills entries.
+- **PDF upload → application snapshot** — drop an old CV PDF into
+  "Bewerbung hinzufügen" and the parsed skills/projects/text attach to
+  that historic application. (Backend `POST /parse-cv-pdf` is live;
+  modal wiring is in progress.)
+- **"Generate all pending" batch from the queue** — turn the queue into a
+  one-click bulk-tailoring tool. Deferred until the AI-cost UX is right.
 
 ---
 
