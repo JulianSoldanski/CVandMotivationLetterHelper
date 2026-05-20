@@ -66,7 +66,30 @@ voice without rewriting letters from scratch.
 
 https://github.com/user-attachments/assets/3888dbe1-4a1f-4bcf-8de6-60cfc58fe635
 
+---
 
+## Roadmap
+
+Tracked in [docs/JOURNAL.md](docs/JOURNAL.md) under each entry's
+"Follow-up" notes. Next up:
+
+- **Statistiken tab** — funnel chart, time-in-stage averages,
+  interview-rate per role. Backend is ready (`stage_events` is indexed);
+  just needs the endpoints and the frontend view. Also categorizing job descriptions based with genai, is a good idea to see in which jobs the cv is best suited for
+- **Create Profile based on PDF upload** — Upload CV, Upload motivationletter -> Create profile from this
+
+- **"Generate all pending" batch from the queue** — turn the queue into a
+  one-click bulk-tailoring tool. Question is do I want this to be easier? After all, the human still has to look over the application, since there are often misrepresented by AI. Automating it further could decrease quality.
+- **UI Overhaul** - Right now UI is rather functional and not much time was spent on it.
+  In the future this can be improved further
+- **Offer Comparison** - Incoming deals are not built yet. A comparison page based on offers is possible.
+- **Automatically change Status of Applications** - An Ai agent could look through emails to identify invitations / declines and update the status automatically
+- **Automatically queue interesting offers** - Scraping job portals is often a difficult tasks, since they are very well protected. However an idea could be to create an email, which receives automatic job recommendations from stepstone, linkedin and co. This could be handled by an AI agent. 
+- **Add Authentication** Add authentication to run this on a server
+- **Make it public** The idea to publish this online as a saas is interesting, since the data gathered from the software could be analyzed and give great information about the job market. However very generous problem: I dont think this could be monetized well
+- **Database optimization** DB architecture needs to be inspected further to decrease redundancy.
+
+---
 
 ## Why this is interesting
 
@@ -267,30 +290,7 @@ Real files are moved to `data/.mine_backup/` while demo is active; `mine`
 restores them bit-for-bit. The script refuses to run while `DEMO_MODE=1`
 is set, so the two modes don't fight each other.
 
----
 
-## Roadmap
-
-Tracked in [docs/JOURNAL.md](docs/JOURNAL.md) under each entry's
-"Follow-up" notes. Next up:
-
-- **Statistiken tab** — funnel chart, time-in-stage averages,
-  interview-rate per role. Backend is ready (`stage_events` is indexed);
-  just needs the endpoints and the frontend view. Also categorizing job descriptions based with genai, is a good idea to see in which jobs the cv is best suited for
-- **Create Profile based on PDF upload** — Upload CV, Upload motivationletter -> Create profile from this
-
-- **"Generate all pending" batch from the queue** — turn the queue into a
-  one-click bulk-tailoring tool. Question is do I want this to be easier? After all, the human still has to look over the application, since there are often misrepresented by AI. Automating it further could decrease quality.
-- **UI Overhaul** - Right now UI is rather functional and not much time was spent on it.
-  In the future this can be improved further
-- **Offer Comparison** - Incoming deals are not built yet. A comparison page based on offers is possible.
-- **Automatically change Status of Applications** - An Ai agent could look through emails to identify invitations / declines and update the status automatically
-- **Automatically queue interesting offers** - Scraping job portals is often a difficult tasks, since they are very well protected. However an idea could be to create an email, which receives automatic job recommendations from stepstone, linkedin and co. This could be handled by an AI agent. 
-- **Add Authentication** Add authentication to run this on a server
-- **Make it public** The idea to publish this online as a saas is interesting, since the data gathered from the software could be analyzed and give great information about the job market. However very generous problem: I dont think this could be monetized well
-- **Database optimization** DB architecture needs to be inspected further to decrease redundancy.
-
----
 
 ## Project layout
 
