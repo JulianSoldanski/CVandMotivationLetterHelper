@@ -288,6 +288,7 @@ Tracked in [docs/JOURNAL.md](docs/JOURNAL.md) under each entry's
 - **Automatically queue interesting offers** - Scraping job portals is often a difficult tasks, since they are very well protected. However an idea could be to create an email, which receives automatic job recommendations from stepstone, linkedin and co. This could be handled by an AI agent. 
 - **Add Authentication** Add authentication to run this on a server
 - **Make it public** The idea to publish this online as a saas is interesting, since the data gathered from the software could be analyzed and give great information about the job market. However very generous problem: I dont think this could be monetized well
+- **Database optimization** DB architecture needs to be inspected further to decrease redundancy.
 
 ---
 
