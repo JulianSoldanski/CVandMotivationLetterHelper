@@ -82,6 +82,7 @@ Tracked in [docs/JOURNAL.md](docs/JOURNAL.md) under each entry's
   one-click bulk-tailoring tool. Question is do I want this to be easier? After all, the human still has to look over the application, since there are often misrepresented by AI. Automating it further could decrease quality.
 - **UI Overhaul** - Right now UI is rather functional and not much time was spent on it.
   In the future this can be improved further
+- **UX Overhaul** - Some steps need to be changed. Goal must be as little clicks as possible to get through the whole workflow. First cv -> then Motivation letter ( not go back and forth ), add subpages so user stays on them, when reloading
 - **Offer Comparison** - Incoming deals are not built yet. A comparison page based on offers is possible.
 - **Automatically change Status of Applications** - An Ai agent could look through emails to identify invitations / declines and update the status automatically. Either as a cronjob or with mail programm api
 - **Automatically queue interesting offers** - Scraping job portals is often a difficult tasks, since they are very well protected. However an idea could be to create an email, which receives automatic job recommendations from stepstone, linkedin and co. This could be handled by an AI agent. 
