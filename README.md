@@ -83,7 +83,7 @@ Tracked in [docs/JOURNAL.md](docs/JOURNAL.md) under each entry's
 - **UI Overhaul** - Right now UI is rather functional and not much time was spent on it.
   In the future this can be improved further
 - **Offer Comparison** - Incoming deals are not built yet. A comparison page based on offers is possible.
-- **Automatically change Status of Applications** - An Ai agent could look through emails to identify invitations / declines and update the status automatically
+- **Automatically change Status of Applications** - An Ai agent could look through emails to identify invitations / declines and update the status automatically. Either as a cronjob or with mail programm api
 - **Automatically queue interesting offers** - Scraping job portals is often a difficult tasks, since they are very well protected. However an idea could be to create an email, which receives automatic job recommendations from stepstone, linkedin and co. This could be handled by an AI agent. 
 - **Add Authentication** Add authentication to run this on a server
 - **Make it public** The idea to publish this online as a saas is interesting, since the data gathered from the software could be analyzed and give great information about the job market. However very generous problem: I dont think this could be monetized well
