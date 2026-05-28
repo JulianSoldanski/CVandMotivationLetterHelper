@@ -27,10 +27,7 @@ condense the company, the role, and the requested tech stack into a
 glance-able summary.
 
 
-
 https://github.com/user-attachments/assets/33ebf7e9-95f9-4c34-a288-7bad265faa12
-
-
 
 
 ### Part 2 — Generate the CV (and cover letter)
@@ -39,10 +36,6 @@ One click turns the queued posting into a tailored CV in your chosen
 layout (Modern / Sidebar / Classic) plus a matching Anschreiben in DE or
 EN. Edit the profile statement, swap experience bullets, toggle projects
 — live preview updates as you go.
-
-
-
-
 
 https://github.com/user-attachments/assets/46c0b6bc-1f36-475b-affe-67ab88aeb7bd
 
@@ -73,73 +66,29 @@ voice without rewriting letters from scratch.
 
 https://github.com/user-attachments/assets/3888dbe1-4a1f-4bcf-8de6-60cfc58fe635
 
-
-
 ---
 
-## What it does
+## Roadmap
 
-**Queue + Bookmarklet**
-- Hit a `→ Queue` bookmarklet from any job page (StepStone, LinkedIn, etc.)
-  and the URL lands in a central queue. Install once by drag-and-dropping
-  the button from `/queue/install` into your bookmarks bar.
-- Queue view shows pending postings as cards; one click on **→ Generieren**
-  opens the saved URL in the Generator, prefills the input, and
-  auto-marks the queue item as done after generation.
-- Statuses: pending / done / skipped / failed. Done + skipped collapse
-  into an archive section.
-- Inline add (paste URL + optional note + Enter) for cases where the
-  bookmarklet wasn't handy.
+Tracked in [docs/JOURNAL.md](docs/JOURNAL.md) under each entry's
+"Follow-up" notes. Next up:
 
-**Generator**
-- Paste a job posting or fetch from a URL (StepStone, LinkedIn, …).
-- One click → tailored CV (German or English) in three layouts (Modern /
-  Sidebar / Classic) plus a matching cover letter (Anschreiben).
-- "Auto-Ausfüllen" extracts company, position, contact line, and city from
-  the posting text via a structured Gemini call.
-- **Stellen-Übersicht** — AI summary of *what the company does*, *what
-  they're looking for*, *which technologies* — pinned to the left panel
-  so it stays visible while you edit on the right.
-- Editor tab: edit the profile statement, swap in/out experience bullets,
-  add/remove projects, tweak skills. Live preview iframe. Projects can carry
-  a link (GitHub, live demo, …) which renders as a clickable inline reference
-  in the CV.
-- Built-in KI-Feedback chat: ask "Was fehlt?", "Welche Keywords?", "Was
-  fällt HR zuerst auf?" — Gemini answers with the full document context.
+- **Statistiken tab** — funnel chart, time-in-stage averages,
+  interview-rate per role. Backend is ready (`stage_events` is indexed);
+  just needs the endpoints and the frontend view. Also categorizing job descriptions based with genai, is a good idea to see in which jobs the cv is best suited for
+- **Create Profile based on PDF upload** — Upload CV, Upload motivationletter -> Create profile from this
 
-**Profil (Profile + writing-style)**
-- One tab for everything that defines *you*: experience, education,
-  hard / soft skills, languages, and projects (with optional GitHub /
-  demo links rendered inline in the CV).
-- Bottom of the same tab: paste a motivation letter you like in DE
-  and/or EN, click **✨ Stil analysieren** — Gemini distills it into a
-  bullet-point style guide (tone, sentence structure, word choice,
-  idiosyncrasies).
-- **Edit the analysis freely.** Future cover letters follow these rules,
-  not the raw example. Lets you steer the AI's voice precisely.
-
-**Bewerbungen (Application tracker)**
-- Every Generieren click auto-logs an application (deduped by company +
-  position). The original posting URL is stored too — one click on the card
-  reopens the source.
-- Visual stepper: Erstellt → Versendet → 1. Gespräch → 2. Gespräch → 3.
-  Gespräch. Plus a separate **Abgesagt** terminal state.
-- Per-card pills: 📨 application date · ⏱ time-in-current-stage.
-- Every stage transition is timestamped (`stage_events` table) — sets up
-  future analytics (avg days between stages, funnel by role, rejection
-  breakdown).
-- Per-application snapshot: 📄 see exactly which skills, projects, profile
-  statement, and tailored experience bullets went out for *that*
-  application. ✉️ see the exact Anschreiben paragraphs.
-- Feedback / notes textarea per card. Manual-add for applications you sent
-  before using the tool.
-
-**Statistik**
-- Funnel view over the application lifecycle: how many got sent, how
-  many reached each interview stage, how many were rejected.
-- Time-in-stage averages and monthly throughput, all derived from the
-  append-only `stage_events` history — so the chart is always consistent
-  with what the tracker shows.
+- **"Generate all pending" batch from the queue** — turn the queue into a
+  one-click bulk-tailoring tool. Question is do I want this to be easier? After all, the human still has to look over the application, since there are often misrepresented by AI. Automating it further could decrease quality.
+- **UI Overhaul** - Right now UI is rather functional and not much time was spent on it.
+  In the future this can be improved further
+- **UX Overhaul** - Some steps need to be changed. Goal must be as little clicks as possible to get through the whole workflow. First cv -> then Motivation letter ( not go back and forth ), add subpages so user stays on them, when reloading
+- **Offer Comparison** - Incoming deals are not built yet. A comparison page based on offers is possible.
+- **Automatically change Status of Applications** - An Ai agent could look through emails to identify invitations / declines and update the status automatically. Either as a cronjob or with mail programm api
+- **Automatically queue interesting offers** - Scraping job portals is often a difficult tasks, since they are very well protected. However an idea could be to create an email, which receives automatic job recommendations from stepstone, linkedin and co. This could be handled by an AI agent. 
+- **Add Authentication** Add authentication to run this on a server
+- **Make it public** The idea to publish this online as a saas is interesting, since the data gathered from the software could be analyzed and give great information about the job market. However very generous problem: I dont think this could be monetized well
+- **Database optimization** DB architecture needs to be inspected further to decrease redundancy.
 
 ---
 
@@ -170,7 +119,7 @@ A few things that aren't obvious from the screenshot:
 - **Snapshot-per-application.** When you regenerate documents for the
   same opening multiple times, the latest CV + Anschreiben gets pinned to
   that application record. Months later you can see exactly which version
-  you sent.
+  you sent. Analyzing different CV approaches is possible.
 
 - **Hybrid storage.** Operational data (applications, stage history) is in
   SQLite for queries. Config-shaped data (profile, projects, settings,
@@ -306,18 +255,6 @@ URL into your queue.
 > Works as long as `python app.py` is running. If you're on an `https://`
 > page and see Mixed-Content warnings, allow them for `localhost`.
 
-### Migrating from an older version
-
-If you have an existing `data/applications.json` from before the SQLite
-move, run once:
-
-```bash
-python3 scripts/migrate_applications_to_sqlite.py
-```
-
-It moves your applications into `data/cvcreater.db` and renames the source
-to `applications.json.bak` (kept indefinitely as a safety net — delete
-manually whenever you trust the migration).
 
 ### Demo mode for screencasts and live demos
 
@@ -354,24 +291,7 @@ Real files are moved to `data/.mine_backup/` while demo is active; `mine`
 restores them bit-for-bit. The script refuses to run while `DEMO_MODE=1`
 is set, so the two modes don't fight each other.
 
----
 
-## Roadmap
-
-Tracked in [docs/JOURNAL.md](docs/JOURNAL.md) under each entry's
-"Follow-up" notes. Next up:
-
-- **Statistiken tab** — funnel chart, time-in-stage averages,
-  interview-rate per role. Backend is ready (`stage_events` is indexed);
-  just needs the endpoints and the frontend view.
-- **PDF upload → application snapshot** — drop an old CV PDF into
-  "Bewerbung hinzufügen" and the parsed skills/projects/text attach to
-  that historic application. (Backend `POST /parse-cv-pdf` is live;
-  modal wiring is in progress.)
-- **"Generate all pending" batch from the queue** — turn the queue into a
-  one-click bulk-tailoring tool. Deferred until the AI-cost UX is right.
-
----
 
 ## Project layout
 
