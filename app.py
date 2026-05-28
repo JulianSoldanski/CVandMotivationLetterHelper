@@ -26,7 +26,7 @@ if DEMO_ACTIVE:
 
 app = Flask(__name__)
 
-GEMINI_MODEL      = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+GEMINI_MODEL      = os.getenv("GEMINI_MODEL", "gemini-3.1-flash-lite")
 PROJECTS_FILE     = demo_mode.projects_path()
 PROFILE_FILE      = demo_mode.profile_path()
 APPLICATIONS_FILE = os.path.join(os.path.dirname(__file__), "data", "applications.json")  # legacy, only read by the JSON→SQLite migrator
@@ -77,22 +77,29 @@ def save_projects(projects: list):
 
 
 def load_settings() -> dict:
-    defaults = {
-        "style_examples": {"de": "", "en": ""},
-        "style_analysis": {"de": "", "en": ""},
-    }
+    """Settings hold a single, language-agnostic writing style.
+
+    The style example may be in any language; the distilled analysis is an
+    English style guide applied to both German and English generation.
+    Legacy files used per-language dicts ({"de": ..., "en": ...}); those are
+    migrated on read by collapsing to whichever language had content.
+    """
+    defaults = {"style_example": "", "style_analysis": ""}
     try:
         with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
             data = json.load(f)
     except (FileNotFoundError, json.JSONDecodeError):
         return defaults
-    for field in ("style_examples", "style_analysis"):
-        if not isinstance(data.get(field), dict):
-            data[field] = {"de": "", "en": ""}
-        for k in ("de", "en"):
-            if not isinstance(data[field].get(k), str):
-                data[field][k] = ""
-    return data
+
+    def _flatten(value) -> str:
+        if isinstance(value, dict):  # legacy {"de": ..., "en": ...}
+            return (value.get("de") or value.get("en") or "").strip()
+        return value.strip() if isinstance(value, str) else ""
+
+    return {
+        "style_example":  _flatten(data.get("style_example", data.get("style_examples", ""))),
+        "style_analysis": _flatten(data.get("style_analysis", "")),
+    }
 
 
 def save_settings(settings: dict):
@@ -469,9 +476,9 @@ def generate_cv_content(
     job_posting: str, company: str, position: str,
     language: str, custom_notes: str, projects: list
 ) -> dict:
-    lang = "auf Deutsch" if language == "de" else "in English"
+    out_lang = "German" if language == "de" else "English"
     projects_text = projects_to_text(projects)
-    notes_block = f"\nEIGENE HINWEISE (unbedingt berücksichtigen):\n{custom_notes}\n" if custom_notes.strip() else ""
+    notes_block = f"\nAPPLICANT NOTES (must be incorporated):\n{custom_notes}\n" if custom_notes.strip() else ""
     profile_text = profile_to_text(load_profile())
     profile = load_profile()
 
@@ -485,60 +492,94 @@ def generate_cv_content(
     edu_ids  = [e["id"] for e in edu if e.get("id")]
     proj_ids = [p["id"] for p in visible_projects if p.get("id")]
 
-    applicant = get_contact()["full_name"]
-    prompt = f"""Du bist ein professioneller CV-Verfasser. Erstelle strukturierten Inhalt {lang} für den Lebenslauf von {applicant}.
+    # Skill-category keys are rendered as labels in the CV, so they follow the
+    # output language. Everything else in the instruction layer stays English.
+    cat_tech = "Tech & Methoden" if language == "de" else "Tech & methods"
+    cat_soft = "Soft Skills"
+    cat_lang = "Sprachen" if language == "de" else "Languages"
+    lang_example = "Deutsch (Muttersprache), Englisch (C1)" if language == "de" else "German (Native), English (C1)"
 
-PROFIL DES BEWERBERS:
+    applicant = get_contact()["full_name"]
+    prompt = f"""You are a professional CV writer. Produce structured CV content for {applicant}.
+
+OUTPUT LANGUAGE: {out_lang}. Write ALL content values in {out_lang}.
+
+APPLICANT PROFILE:
 {profile_text}
 
-PROJEKTE & ERFOLGE:
+PROJECTS & ACHIEVEMENTS:
 {projects_text}
 {notes_block}
-STELLENAUSSCHREIBUNG:
+JOB POSTING:
 {job_posting}
 
-UNTERNEHMEN: {company or "aus Stellenausschreibung entnehmen"}
-POSITION: {position or "aus Stellenausschreibung entnehmen"}
+COMPANY: {company or "infer from the job posting"}
+POSITION: {position or "infer from the job posting"}
 
-Gib ein JSON-Objekt zurück mit exakt dieser Struktur:
+Return a JSON object with exactly this structure:
 {{
   "profile": "2-3 sentence profile statement tailored to this position",
   "experience": [
     {{
       "id": "original ID from profile",
-      "title": "job title{' translated to English' if language == 'en' else ' auf Deutsch'}",
+      "title": "job title",
+      "company": "company name",
+      "location": "city, country",
       "bullets": ["bullet 1 tailored to position", "bullet 2"]
     }}
   ],
   "education": [
     {{
       "id": "original ID from profile",
-      "degree": "degree name{' translated to English' if language == 'en' else ' auf Deutsch'}"
+      "degree": "degree name",
+      "institution": "school/university name",
+      "location": "city, country",
+      "details": ["focus / minor / honors"]
     }}
   ],
   "projects": [
     {{
       "id": "project id",
-      "title": "project title{' translated to English' if language == 'en' else ' auf Deutsch'}",
-      "description": "project description{' translated to English' if language == 'en' else ' auf Deutsch'}"
+      "title": "project title",
+      "description": "project description"
     }}
   ],
   "skills": {{
-    "{'Technical' if language == 'en' else 'Technisch'}": "React, TypeScript, Python, ...",
-    "{'Methods' if language == 'en' else 'Methoden'}": "...",
-    "{'Languages' if language == 'en' else 'Sprachen'}": "{'German (Native), English (C1)' if language == 'en' else 'Deutsch (Muttersprache), Englisch (C1)'}"
+    "{cat_tech}": "React, TypeScript, Python, ...",
+    "{cat_soft}": "...",
+    "{cat_lang}": "{lang_example}"
   }}
 }}
 
-Regeln:
-- Verwende NUR diese Experience-IDs: {exp_ids}
-- Verwende NUR diese Education-IDs: {edu_ids}
-- Verwende NUR diese Project-IDs: {proj_ids}
-- Wähle die 3-4 relevantesten Projekte
-- {"Übersetze alle Titel, Abschlüsse, Skill-Kategorien und Projektbeschreibungen ins Englische" if language == 'en' else "Alles auf Deutsch"}
-- Bullet Points: NUR konkrete Tätigkeiten und Ergebnisse, KEIN "– was meine XY-Skills beweist/zeigt/unterstreicht"
-- Keine Wiederholungen von Informationen die bereits anderswo stehen
-- Erfinde keine Fakten
+RULES (this instruction layer is written in English on purpose — it does NOT
+change the OUTPUT LANGUAGE defined above; all content values stay {out_lang}):
+
+IDs & coverage:
+- Experience: include EVERY entry below, exactly one object per ID, in this
+  same order. Do NOT omit, merge, or combine entries — even if two look
+  similar or seem less relevant: {exp_ids}
+- Education: include EVERY entry below, exactly one object per ID, in this
+  same order. Do NOT omit any: {edu_ids}
+- Projects: from this list, select ONLY the 3-4 most relevant: {proj_ids}
+- Use only the IDs listed above; never invent or alter an ID.
+
+Translation:
+- Translate ALL content into {out_lang}: titles, degrees, locations/countries
+  (e.g. Deutschland <-> Germany, Norwegen <-> Norway), skill categories,
+  project descriptions, education details (focus/minor/honors).
+- Do NOT translate proper nouns (company names, university names). Translate a
+  legal/company suffix (GmbH/Inc./Ltd.) only when it reads naturally.
+
+Structure & format:
+- Return valid JSON only, exactly matching the structure above.
+- Keep all structural keys in English as shown. The keys inside "skills" are
+  display labels — use them exactly as provided.
+
+Style limits:
+- Bullets: concrete activities and results ONLY. Never append "— which
+  proves/shows/underlines my XY skills".
+- Do not repeat information that already appears elsewhere.
+- Do not invent facts.
 """
     return _call_gemini_json(prompt, 4096)
 
@@ -883,8 +924,8 @@ def generate_anschreiben_content(
     profile_text = profile_to_text(load_profile())
 
     settings_data  = load_settings()
-    style_analysis = (settings_data.get("style_analysis", {}).get(language) or "").strip()
-    style_example  = (settings_data.get("style_examples", {}).get(language) or "").strip()
+    style_analysis = (settings_data.get("style_analysis") or "").strip()
+    style_example  = (settings_data.get("style_example") or "").strip()
     style_block = ""
     if style_analysis:
         style_block = (
@@ -948,8 +989,8 @@ def _render_jobs(jobs_content: list, profile: dict, layout: str, language: str =
         if not entry:
             continue
         title    = item.get("title") or entry.get("title", "")
-        company  = entry.get("company", "")
-        location = entry.get("location", "")
+        company  = item.get("company") or entry.get("company", "")
+        location = item.get("location") or entry.get("location", "")
         start    = fmt_date(entry.get("start"), language=language)
         end      = fmt_date(entry.get("end"), entry.get("current", False), language=language)
         bullets  = item.get("bullets", entry.get("bullets", []))
@@ -985,11 +1026,11 @@ def _render_education(edu_content: list, profile: dict, layout: str, language: s
         if not entry:
             continue
         degree      = item.get("degree") or entry.get("degree", "")
-        institution = entry.get("institution", "")
-        location    = entry.get("location", "")
+        institution = item.get("institution") or entry.get("institution", "")
+        location    = item.get("location") or entry.get("location", "")
         start       = fmt_date(entry.get("start"), language=language)
         end         = fmt_date(entry.get("end"), entry.get("current", False), language=language)
-        details     = list(entry.get("details", []))
+        details     = list(item.get("details") or entry.get("details", []))
         det_html = "".join(f"<li>{d}</li>" for d in details)
 
         if layout == "sidebar":
@@ -1692,12 +1733,9 @@ def get_settings():
 def update_settings():
     data     = request.json or {}
     settings = load_settings()
-    for field in ("style_examples", "style_analysis"):
-        block = data.get(field)
-        if isinstance(block, dict):
-            for k in ("de", "en"):
-                if k in block:
-                    settings[field][k] = (block[k] or "").strip()
+    for field in ("style_example", "style_analysis"):
+        if isinstance(data.get(field), str):
+            settings[field] = data[field].strip()
     save_settings(settings)
     return jsonify(settings)
 
@@ -1706,30 +1744,29 @@ def update_settings():
 def analyze_style():
     if not os.environ.get("GEMINI_API_KEY"):
         return jsonify({"error": "GEMINI_API_KEY nicht gesetzt."}), 500
-    data     = request.json or {}
-    example  = (data.get("example") or "").strip()
-    language = data.get("language") or "de"
+    data    = request.json or {}
+    example = (data.get("example") or "").strip()
     if not example:
         return jsonify({"error": "Beispiel-Text ist leer."}), 400
-    if language not in ("de", "en"):
-        return jsonify({"error": "Sprache muss 'de' oder 'en' sein."}), 400
 
-    lang_label = "auf Deutsch" if language == "de" else "in English"
-    prompt = f"""Analysiere den Schreibstil des folgenden Beispiel-Anschreibens und beschreibe ihn {lang_label} so präzise, dass eine andere KI diesen Stil später nachahmen kann — ohne die Inhalte zu übernehmen.
+    # The analysis is the instruction layer: always English, language-agnostic,
+    # so it can be applied to both German and English generation. The example
+    # itself may be in either language.
+    prompt = f"""Analyze the writing style of the example cover letter below and describe it in English, precisely enough that another AI can imitate this style later without copying the content. The example may be in German or English — describe the style itself, which carries over regardless of the language a letter is later written in.
 
-BEISPIEL-TEXT:
+EXAMPLE TEXT:
 \"\"\"
 {example[:6000]}
 \"\"\"
 
-Gib 6–10 Stichpunkte zurück, die folgende Aspekte abdecken (sofern erkennbar):
-- Tonfall (formell ↔ locker, direkt ↔ zurückhaltend, selbstbewusst ↔ bescheiden)
-- Satzbau (Länge, Aktiv/Passiv, parataktisch/hypotaktisch)
-- Wortwahl (Fachsprache, Anglizismen, branchenspezifische Begriffe, bewusst gemiedene Floskeln)
-- Strukturmuster (Einstieg, Argumentationslogik, Abschluss)
-- Wiederkehrende rhetorische Mittel oder Eigenheiten
+Return 6–10 bullet points covering these aspects (where recognizable):
+- Tone (formal ↔ casual, direct ↔ reserved, confident ↔ modest)
+- Sentence structure (length, active/passive, parataxis/hypotaxis)
+- Word choice (jargon, anglicisms, industry terms, deliberately avoided filler phrases)
+- Structural patterns (opening, line of argument, closing)
+- Recurring rhetorical devices or quirks
 
-Format: reine Markdown-Bullet-Liste (\"- …\"), kein Vor- oder Nachwort, keine Anrede an mich.
+Format: plain markdown bullet list (\"- …\"), no preamble or closing remark, no salutation to me.
 """
     try:
         analysis = call_gemini(prompt, 1024).strip()

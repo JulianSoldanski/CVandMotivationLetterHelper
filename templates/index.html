@@ -451,10 +451,13 @@
   }
   .apps-filter-group { display:flex; flex-direction:column; gap:0.25rem; min-width:140px; }
   .apps-filter-group label { font-size:0.72rem; font-weight:600; color:#888; text-transform:uppercase; letter-spacing:0.04em; }
-  .apps-filter-group select {
+  .apps-filter-group select,
+  .apps-filter-group input[type="search"] {
     padding:0.4rem 0.55rem; border:1px solid #ddd; border-radius:6px;
     font-size:0.82rem; color:#2c3e50; background:#fff;
   }
+  .apps-filter-group.search { min-width:220px; flex:1 1 220px; max-width:340px; }
+  .apps-filter-group input[type="search"] { width:100%; }
   .apps-filter-count { margin-left:auto; font-size:0.8rem; color:#888; align-self:center; }
   .app-job-link {
     font-size:0.78rem; font-weight:600; color:#3498db; text-decoration:none;
@@ -552,9 +555,10 @@
   .queue-fit-details { margin-top:0.4rem; font-size:0.78rem; }
   .queue-fit-details summary {
     cursor:pointer; user-select:none; color:#4B5D67; font-weight:600;
-    padding:0.25rem 0;
+    padding:0.25rem 0; list-style:none;
   }
   .queue-fit-details summary::-webkit-details-marker { display:none; }
+  .queue-fit-details summary::marker { content:""; }
   .queue-fit-details summary::before { content:"▸ "; }
   .queue-fit-details[open] summary::before { content:"▾ "; }
   .queue-fit-details ul { margin:0.15rem 0 0.35rem 1.1rem; padding:0; font-size:0.76rem; line-height:1.5; }
@@ -770,8 +774,9 @@
   .fit-pill.fit-low  { background:#fdecea; color:#c0392b; border:1px solid #f5c6c0; }
   .fit-pill.fit-mid  { background:#fff4d6; color:#a86b00; border:1px solid #f0d99a; }
   .fit-pill.fit-high { background:#dff5e1; color:#1b7a37; border:1px solid #b6e0c0; }
-  .fit-details summary { cursor:pointer; user-select:none; color:#4B5D67; font-weight:600; font-size:0.74rem; margin-top:0.4rem; }
+  .fit-details summary { cursor:pointer; user-select:none; color:#4B5D67; font-weight:600; font-size:0.74rem; margin-top:0.4rem; list-style:none; }
   .fit-details summary::-webkit-details-marker { display:none; }
+  .fit-details summary::marker { content:""; }
   .fit-details summary::before { content: "▸ "; }
   .fit-details[open] summary::before { content: "▾ "; }
   .fit-grid { display:grid; grid-template-columns:1fr 1fr; gap:0.55rem; margin-top:0.35rem; }
@@ -1238,32 +1243,20 @@
       </div>
       <div class="collapsible-body" id="body-style">
         <p class="style-section-hint">
-          Hinterlege Beispiel-Anschreiben in beiden Sprachen. Die KI analysiert daraus deinen Stil (Tonfall, Satzbau, Wortwahl) und übernimmt ihn beim Generieren — wörtliche Inhalte werden nicht übernommen.
+          Füge ein Beispiel-Anschreiben ein (Deutsch oder Englisch). Die KI destilliert daraus deinen Stil (Tonfall, Satzbau, Wortwahl) und übernimmt ihn beim Generieren in beiden Sprachen — wörtliche Inhalte werden nicht übernommen.
         </p>
         <div class="style-grid">
           <div class="settings-card">
-            <div class="settings-card-title">🇩🇪 Motivationsschreiben (Deutsch)</div>
-            <p class="settings-card-hint">Füge ein bereits geschriebenes Anschreiben ein und lass die KI deinen Stil destillieren. Die Analyse kannst du anschließend frei bearbeiten — sie wird beim Generieren als Stilvorgabe verwendet.</p>
+            <div class="settings-card-title">✍️ Schreibstil</div>
+            <p class="settings-card-hint">Füge ein bereits geschriebenes Anschreiben (egal welche Sprache) ein und lass die KI deinen Stil destillieren. Die Analyse beschreibt den Stil sprachneutral und wird beim Generieren auf Deutsch wie Englisch angewendet. Du kannst sie anschließend frei bearbeiten.</p>
             <label class="settings-sublabel">Beispiel-Text</label>
-            <textarea id="styleExampleDe" rows="10" placeholder="Sehr geehrte Damen und Herren, …" oninput="updateStyleCount('de')"></textarea>
+            <textarea id="styleExample" rows="10" placeholder="Sehr geehrte Damen und Herren, … / Dear Hiring Manager, …" oninput="updateStyleCount()"></textarea>
             <div class="settings-actions-row">
-              <button class="action-btn primary" id="analyzeDeBtn" onclick="analyzeStyle('de')">✨ Stil analysieren</button>
-              <span class="settings-meta"><span id="styleDeCount">0 Zeichen</span></span>
+              <button class="action-btn primary" id="analyzeStyleBtn" onclick="analyzeStyle()">✨ Stil analysieren</button>
+              <span class="settings-meta"><span id="styleCount">0 Zeichen</span></span>
             </div>
             <label class="settings-sublabel">Analysierter Stil <span class="opt">(editierbar — wird beim Generieren verwendet)</span></label>
-            <textarea id="styleAnalysisDe" rows="9" placeholder="Klicke „Stil analysieren" — oder schreibe direkt eigene Stilrichtlinien rein (z.B. „- kurze, aktive Sätze\n- keine Floskeln\n- direkter Einstieg ohne hiermit-bewerbe-ich-mich")."></textarea>
-          </div>
-          <div class="settings-card">
-            <div class="settings-card-title">🇬🇧 Cover Letter (English)</div>
-            <p class="settings-card-hint">Paste an English cover letter and let the AI distill your style. Edit the analysis freely — it'll be used as the style guide when generating.</p>
-            <label class="settings-sublabel">Example text</label>
-            <textarea id="styleExampleEn" rows="10" placeholder="Dear Hiring Manager, …" oninput="updateStyleCount('en')"></textarea>
-            <div class="settings-actions-row">
-              <button class="action-btn primary" id="analyzeEnBtn" onclick="analyzeStyle('en')">✨ Analyze style</button>
-              <span class="settings-meta"><span id="styleEnCount">0 characters</span></span>
-            </div>
-            <label class="settings-sublabel">Analyzed style <span class="opt">(editable — used when generating)</span></label>
-            <textarea id="styleAnalysisEn" rows="9" placeholder="Click „Analyze style" — or write your own style rules here (e.g. „- short active sentences\n- no filler phrases\n- direct opening")."></textarea>
+            <textarea id="styleAnalysis" rows="9" placeholder="Klicke „Stil analysieren" — oder schreibe direkt eigene Stilrichtlinien rein (z.B. „- kurze, aktive Sätze\n- keine Floskeln\n- direkter Einstieg ohne hiermit-bewerbe-ich-mich")."></textarea>
           </div>
         </div>
         <div class="style-save-row">
@@ -1335,6 +1328,10 @@
       <button class="apps-add-btn" onclick="openApplicationModal()">+ Bewerbung hinzufügen</button>
     </div>
     <div class="apps-filters" id="appsFilters">
+      <div class="apps-filter-group search">
+        <label for="appsFilterSearch">Suche</label>
+        <input type="search" id="appsFilterSearch" placeholder="Firma oder Position…" oninput="onAppsFilterChange()" autocomplete="off" />
+      </div>
       <div class="apps-filter-group">
         <label for="appsFilterStage">Status</label>
         <select id="appsFilterStage" onchange="onAppsFilterChange()">
@@ -1600,12 +1597,9 @@
     layouts.forEach(l => { layoutStyles[l.id] = l.style; });
     applications = await appsRes.json();
     const settings = await settingsRes.json();
-    document.getElementById('styleExampleDe').value  = (settings.style_examples && settings.style_examples.de) || '';
-    document.getElementById('styleExampleEn').value  = (settings.style_examples && settings.style_examples.en) || '';
-    document.getElementById('styleAnalysisDe').value = (settings.style_analysis && settings.style_analysis.de) || '';
-    document.getElementById('styleAnalysisEn').value = (settings.style_analysis && settings.style_analysis.en) || '';
-    updateStyleCount('de');
-    updateStyleCount('en');
+    document.getElementById('styleExample').value  = settings.style_example || '';
+    document.getElementById('styleAnalysis').value = settings.style_analysis || '';
+    updateStyleCount();
     renderProjects();
     renderEntries('experience');
     renderEntries('education');
@@ -1993,11 +1987,9 @@
   }
 
   // ── Settings ──
-  function updateStyleCount(lang) {
-    const el = document.getElementById('styleExample' + (lang === 'de' ? 'De' : 'En'));
-    const out = document.getElementById('style' + (lang === 'de' ? 'De' : 'En') + 'Count');
-    const n = (el.value || '').length;
-    out.textContent = lang === 'de' ? `${n} Zeichen` : `${n} characters`;
+  function updateStyleCount() {
+    const n = (document.getElementById('styleExample').value || '').length;
+    document.getElementById('styleCount').textContent = `${n} Zeichen`;
   }
 
   async function saveSettings() {
@@ -2010,14 +2002,8 @@
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          style_examples: {
-            de: document.getElementById('styleExampleDe').value,
-            en: document.getElementById('styleExampleEn').value,
-          },
-          style_analysis: {
-            de: document.getElementById('styleAnalysisDe').value,
-            en: document.getElementById('styleAnalysisEn').value,
-          }
+          style_example:  document.getElementById('styleExample').value,
+          style_analysis: document.getElementById('styleAnalysis').value,
         })
       });
       const data = await res.json();
@@ -2033,43 +2019,36 @@
     }
   }
 
-  async function analyzeStyle(lang) {
-    const suffix = lang === 'de' ? 'De' : 'En';
-    const example = document.getElementById('styleExample' + suffix).value.trim();
-    const analysisEl = document.getElementById('styleAnalysis' + suffix);
-    const btn = document.getElementById('analyze' + suffix + 'Btn');
+  async function analyzeStyle() {
+    const example = document.getElementById('styleExample').value.trim();
+    const analysisEl = document.getElementById('styleAnalysis');
+    const btn = document.getElementById('analyzeStyleBtn');
     const status = document.getElementById('settingsStatus');
 
     if (!example) {
-      alert(lang === 'de'
-        ? 'Bitte zuerst ein Beispiel-Anschreiben einfügen.'
-        : 'Please paste an example cover letter first.');
+      alert('Bitte zuerst ein Beispiel-Anschreiben einfügen.');
       return;
     }
 
-    if (analysisEl.value.trim() && !confirm(lang === 'de'
-        ? 'Die bestehende Analyse wird überschrieben. Fortfahren?'
-        : 'This will overwrite the current analysis. Continue?')) {
+    if (analysisEl.value.trim() && !confirm('Die bestehende Analyse wird überschrieben. Fortfahren?')) {
       return;
     }
 
     btn.disabled = true;
     const original = btn.textContent;
-    btn.textContent = lang === 'de' ? 'Analysiere…' : 'Analyzing…';
+    btn.textContent = 'Analysiere…';
     status.classList.remove('show', 'error');
 
     try {
       const res = await fetch('/analyze-style', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ example, language: lang })
+        body: JSON.stringify({ example })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Analyse fehlgeschlagen.');
       analysisEl.value = data.analysis || '';
-      status.textContent = lang === 'de'
-        ? '✓ Stil analysiert. Du kannst die Punkte jetzt anpassen und dann speichern.'
-        : '✓ Style analyzed. Tweak the points if you like, then save.';
+      status.textContent = '✓ Stil analysiert. Du kannst die Punkte jetzt anpassen und dann speichern.';
       status.classList.add('show');
       setTimeout(() => status.classList.remove('show'), 3500);
     } catch (e) {
@@ -2482,9 +2461,16 @@
   function getFilteredSortedApplications() {
     const stageFilter = (document.getElementById('appsFilterStage') || {}).value || '';
     const sortKey = (document.getElementById('appsFilterSort') || {}).value || 'updated_desc';
+    const search = ((document.getElementById('appsFilterSearch') || {}).value || '').trim().toLowerCase();
     let list = applications.slice();
     if (stageFilter) {
       list = list.filter(a => a.stage === stageFilter);
+    }
+    if (search) {
+      list = list.filter(a =>
+        (a.company  || '').toLowerCase().includes(search) ||
+        (a.position || '').toLowerCase().includes(search)
+      );
     }
     const cmpStr = (a, b) => (a || '').localeCompare(b || '', 'de');
     const noDate = '\uffff';
@@ -2531,6 +2517,7 @@
   }
 
   function renderApplications() {
+    initAppsFilterControls();
     const list = document.getElementById('applicationsList');
     const sub  = document.getElementById('appsSub');
     const countEl = document.getElementById('appsFilterCount');
