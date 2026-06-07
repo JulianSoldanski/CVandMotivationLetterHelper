@@ -46,7 +46,8 @@ def init_schema():
                 layout_used         TEXT,
                 language            TEXT,
                 created_at          TEXT NOT NULL,
-                updated_at          TEXT NOT NULL
+                updated_at          TEXT NOT NULL,
+                research_seconds    INTEGER NOT NULL DEFAULT 0
             );
 
             CREATE TABLE IF NOT EXISTS stage_events (
@@ -87,6 +88,7 @@ def init_schema():
             ("job_url",             "TEXT NOT NULL DEFAULT ''"),
             ("company_info",        "TEXT"),
             ("fit_score",           "TEXT"),
+            ("research_seconds",    "INTEGER NOT NULL DEFAULT 0"),
         ]:
             if col not in existing_cols:
                 conn.execute(f"ALTER TABLE applications ADD COLUMN {col} {decl}")
@@ -132,6 +134,7 @@ def _row_to_dict(row: sqlite3.Row, history: list[dict]) -> dict:
         "language":            row["language"],
         "created_at":          row["created_at"],
         "updated_at":          row["updated_at"],
+        "research_seconds":    row["research_seconds"] if "research_seconds" in keys else 0,
     }
 
 
@@ -187,8 +190,8 @@ def upsert_application(entry: dict):
                  (id, company, position, current_stage, feedback, applied_at,
                   job_posting, job_url, cv_content, anschreiben_content,
                   company_info, fit_score, layout_used, language,
-                  created_at, updated_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                  created_at, updated_at, research_seconds)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                ON CONFLICT(id) DO UPDATE SET
                  company             = excluded.company,
                  position            = excluded.position,
@@ -203,7 +206,8 @@ def upsert_application(entry: dict):
                  fit_score           = COALESCE(excluded.fit_score,           applications.fit_score),
                  layout_used         = COALESCE(excluded.layout_used,         applications.layout_used),
                  language            = COALESCE(excluded.language,            applications.language),
-                 updated_at          = excluded.updated_at""",
+                 updated_at          = excluded.updated_at,
+                 research_seconds    = excluded.research_seconds""",
             (
                 entry["id"],
                 entry.get("company", ""),
@@ -221,6 +225,7 @@ def upsert_application(entry: dict):
                 entry.get("language"),
                 entry["created_at"],
                 entry["updated_at"],
+                int(entry.get("research_seconds") or 0),
             ),
         )
 

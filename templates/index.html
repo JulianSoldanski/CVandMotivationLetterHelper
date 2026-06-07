@@ -1613,6 +1613,14 @@
     const qNote = document.getElementById('queueAddNote');
     if (qUrl)  qUrl.addEventListener('keydown',  e => { if (e.key === 'Enter') addQueueFromInput(); });
     if (qNote) qNote.addEventListener('keydown', e => { if (e.key === 'Enter') addQueueFromInput(); });
+
+    // Gen-Timer: start/extend a segment whenever the user identifies a posting
+    // (typing, paste, programmatic fill via Auto-Ausfüllen, or queue prefill).
+    ['company', 'position'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener('input', ensureGenTimerStarted);
+    });
+    ensureGenTimerStarted();
   }
 
   // ── Queue ──
@@ -1956,6 +1964,60 @@
     // bewusst NICHT, damit Generator-Klick weiterhin manuell bleibt)
   }
 
+  // ── Gen-Timer (per-application "Zeit investiert" tracker) ──
+  // Simple wall-clock: a segment runs from when (company,position) is loaded
+  // in the Generator until the next Generieren click. On each click the
+  // elapsed seconds are sent to /generate and a fresh segment starts. No
+  // pause on tab blur / view switch — per user spec. Persisted in
+  // localStorage so a page refresh doesn't lose the segment start.
+  const GEN_TIMER_LS_KEY = 'cvc.genTimer';
+
+  function getGenTimerKey() {
+    const c = (document.getElementById('company')  || {}).value || '';
+    const p = (document.getElementById('position') || {}).value || '';
+    const key = c.trim() + '|' + p.trim();
+    return key === '|' ? '' : key;
+  }
+
+  function readGenTimer() {
+    try {
+      const raw = localStorage.getItem(GEN_TIMER_LS_KEY);
+      if (!raw) return null;
+      const obj = JSON.parse(raw);
+      if (!obj || typeof obj.key !== 'string' || typeof obj.startedAt !== 'number') return null;
+      return obj;
+    } catch { return null; }
+  }
+
+  function writeGenTimer(key, startedAt) {
+    try {
+      if (!key) localStorage.removeItem(GEN_TIMER_LS_KEY);
+      else      localStorage.setItem(GEN_TIMER_LS_KEY, JSON.stringify({ key, startedAt }));
+    } catch {}
+  }
+
+  // Start a segment if none is running for the current (company,position),
+  // or if the stored segment belongs to a different posting.
+  function ensureGenTimerStarted() {
+    const key = getGenTimerKey();
+    if (!key) return;
+    const cur = readGenTimer();
+    if (!cur || cur.key !== key) writeGenTimer(key, Date.now());
+  }
+
+  // Return elapsed seconds for the current key and immediately restart the
+  // segment so the next iteration begins counting. Returns 0 when no matching
+  // segment exists (e.g. user pasted fields and clicked Generieren instantly).
+  function consumeGenTimerElapsed() {
+    const key = getGenTimerKey();
+    if (!key) return 0;
+    const cur = readGenTimer();
+    const now = Date.now();
+    writeGenTimer(key, now);  // start the next segment right away
+    if (!cur || cur.key !== key) return 0;
+    return Math.max(0, Math.round((now - cur.startedAt) / 1000));
+  }
+
   // ── View switching (Generator ↔ Queue ↔ Profil ↔ Bewerbungen ↔ Statistik) ──
   // Style-Einstellungen sind seit dem Merge eine Sektion innerhalb des Profil-Tabs.
   let activeView = 'generator';
@@ -1977,6 +2039,7 @@
     if (view === 'queue') refreshQueue();
     if (view === 'profile') refreshProfileView();
     if (view === 'stats') renderStats();
+    if (view === 'generator') ensureGenTimerStarted();
   }
 
   function refreshProfileView() {
@@ -2555,6 +2618,16 @@
     return `seit ${days} Tagen`;
   }
 
+  function formatResearchDuration(seconds) {
+    const s = Math.max(0, Math.round(seconds || 0));
+    if (s < 60)    return '< 1 min investiert';
+    const m = Math.round(s / 60);
+    if (m < 60)    return `${m} min investiert`;
+    const h    = Math.floor(m / 60);
+    const rest = m % 60;
+    return rest ? `${h}h ${rest} min investiert` : `${h}h investiert`;
+  }
+
   function stageLabel(key) {
     const s = APP_STAGES.find(x => x.key === key);
     return s ? s.label : key;
@@ -2722,6 +2795,9 @@
     const applied = app.applied_at
       ? `<span class="app-meta-pill">📨 Bewerbung: ${formatAppDate(app.applied_at)}</span>`
       : '';
+    const researchPill = (app.research_seconds && app.research_seconds > 0)
+      ? `<span class="app-meta-pill">⏱ ${esc(formatResearchDuration(app.research_seconds))}</span>`
+      : '';
 
     let statusPill;
     if (isRejected) {
@@ -2745,7 +2821,7 @@
           <div class="app-card-title">${title} ${pos}${jobLink}</div>
           <div class="app-card-date">${formatAppDate(app.updated_at)}</div>
         </div>
-        <div class="app-meta">${applied}${statusPill}</div>
+        <div class="app-meta">${applied}${researchPill}${statusPill}</div>
         ${renderJobPostingBlock(app)}
         <div class="stepper">${stepsHtml}</div>
         ${renderFitScoreSnapshot(app)}
@@ -3054,6 +3130,9 @@
       if (data.contact)         setIfEmpty('contact',         data.contact);
       if (data.city)            setIfEmpty('city',            data.city);
       if (data.company_address) setIfEmpty('company_address', data.company_address);
+      // Programmatic .value assignment doesn't fire 'input' — kick the timer
+      // here so an auto-filled posting starts a segment.
+      ensureGenTimerStarted();
     } catch(e) {
       console.warn('Auto-Ausfüllen fehlgeschlagen:', e.message);
     } finally {
@@ -3260,6 +3339,7 @@
       custom_notes:    document.getElementById('custom_notes').value,
       company_address: document.getElementById('company_address').value,
       layout,
+      tracked_seconds: consumeGenTimerElapsed(),
     };
     try {
       const res  = await fetch('/generate', {

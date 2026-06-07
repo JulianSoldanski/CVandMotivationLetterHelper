@@ -191,6 +191,7 @@ def log_application(
     fit_score: dict | None = None,
     layout_used: str | None = None,
     language: str | None = None,
+    tracked_seconds: int = 0,
 ) -> dict | None:
     """Create or refresh an application entry from a generate event.
 
@@ -202,6 +203,10 @@ def log_application(
     position = (position or "").strip()
     if not company and not position:
         return None
+
+    # Defensive clamp: 24h cap swallows obviously-bogus values from a stale
+    # localStorage timestamp (e.g. user left the tab open for days).
+    tracked_seconds = max(0, min(int(tracked_seconds or 0), 86400))
 
     existing = db.find_application_by_company_position(company, position)
     now = _now_iso()
@@ -223,6 +228,7 @@ def log_application(
             existing["layout_used"] = layout_used
         if language:
             existing["language"] = language
+        existing["research_seconds"] = int(existing.get("research_seconds") or 0) + tracked_seconds
         db.upsert_application(existing)
         return existing
 
@@ -244,6 +250,7 @@ def log_application(
         "language":            language,
         "created_at":          now,
         "updated_at":          now,
+        "research_seconds":    tracked_seconds,
     }
     db.upsert_application(entry)
     db.append_stage_event(entry["id"], "documents_created", now)
@@ -1389,6 +1396,10 @@ def generate():
         result["company_info"] = None
 
     job_url = (data.get("job_url") or "").strip()
+    try:
+        tracked_seconds = int(data.get("tracked_seconds") or 0)
+    except (TypeError, ValueError):
+        tracked_seconds = 0
     logged = log_application(
         company, position, job_posting,
         job_url=job_url,
@@ -1398,6 +1409,7 @@ def generate():
         fit_score           = result.get("fit_score"),
         layout_used         = resolved_layout,
         language            = language,
+        tracked_seconds     = tracked_seconds,
     )
     if logged:
         result["application"] = logged
