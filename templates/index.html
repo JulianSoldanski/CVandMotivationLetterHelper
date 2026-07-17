@@ -366,6 +366,43 @@
   }
   .funnel-bar-fill.warn { background:linear-gradient(90deg, #c0392b, #e67e63); }
 
+  /* Absagen-Verlauf */
+  .rej-clickable {
+    cursor:pointer; border-radius:7px; padding:0.3rem 0.45rem; margin-left:-0.45rem;
+    margin-right:-0.45rem; transition:background .15s ease;
+  }
+  .rej-clickable:hover { background:#faf1ef; }
+  .rej-clickable.active { background:#fdeeeb; }
+  .rej-clickable.active .funnel-meta { color:#c0392b; }
+  .rej-filter-tag {
+    font-size:0.64rem; font-weight:700; color:#c0392b; background:#f9dcd6;
+    border-radius:4px; padding:0.05rem 0.3rem; margin-left:0.35rem; white-space:nowrap;
+  }
+  .rej-filter-bar {
+    display:flex; align-items:center; justify-content:space-between; gap:0.75rem;
+    margin-top:0.9rem; padding:0.45rem 0.6rem; background:#fdeeeb;
+    border-radius:7px; font-size:0.74rem; color:#8c3a2c;
+  }
+  .rej-filter-reset {
+    border:1px solid #e8b6ab; background:#fff; color:#c0392b; cursor:pointer;
+    font-size:0.7rem; font-weight:600; border-radius:5px; padding:0.2rem 0.55rem;
+  }
+  .rej-filter-reset:hover { background:#fff5f3; }
+  .rej-list { display:flex; flex-direction:column; }
+  .rej-row {
+    display:flex; align-items:baseline; justify-content:space-between; gap:0.75rem;
+    padding:0.5rem 0; border-bottom:1px solid #f0f2f4;
+  }
+  .rej-row:last-child { border-bottom:none; }
+  .rej-row-name {
+    font-size:0.78rem; font-weight:600; color:#2c3e50;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  .rej-row-meta { font-size:0.7rem; color:#999; margin-top:0.1rem; }
+  .rej-row-right { text-align:right; flex-shrink:0; }
+  .rej-row-date { font-size:0.76rem; font-weight:700; color:#c0392b; white-space:nowrap; }
+  .rej-row-days { font-size:0.68rem; color:#aaa; white-space:nowrap; }
+
   /* Donut for status distribution */
   .donut-wrap { display:flex; align-items:center; gap:1.1rem; }
   .donut {
@@ -404,10 +441,12 @@
     width:100%; background:linear-gradient(180deg, #6c8392, #4B5D67);
     border-radius:5px 5px 0 0; min-height:2px; position:relative;
   }
+  .month-bar.danger { background:linear-gradient(180deg, #e67e63, #c0392b); }
   .month-bar-count {
     position:absolute; top:-1.05rem; left:50%; transform:translateX(-50%);
     font-size:0.7rem; font-weight:700; color:#4B5D67;
   }
+  .month-bar-count.danger { color:#c0392b; }
   .month-bar-label {
     font-size:0.66rem; color:#888; font-weight:600; text-align:center;
     line-height:1.1;
@@ -1565,6 +1604,8 @@
   let profile = { experience: [], education: [], hard_skills: [], soft_skills: [], languages: [] };
   let editingId = null;
   let applications = [];
+  // Aktive Ausgangsstufe im Absagen-Panel; null = alle zeigen.
+  let rejFilterStage = null;
 
   const APP_STAGES = [
     { key: 'documents_created', label: 'Erstellt' },
@@ -1575,6 +1616,16 @@
     { key: 'rejected',          label: 'Abgesagt' },
   ];
   const LINEAR_STAGES = APP_STAGES.filter(s => s.key !== 'rejected');
+
+  // Display-only: 'documents_created' und 'application_sent' sind fachlich
+  // dieselbe Stufe und werden in Funnel/Donut als eine Zeile gezeigt. Das
+  // Datenmodell, das Stage-Dropdown und die Historie bleiben getrennt.
+  const MERGED_SENT_KEY = 'application_sent';
+  const MERGED_SENT_LABEL = 'Erstellt & versendet';
+  const MERGED_AWAY_KEY = 'documents_created';
+  const FUNNEL_STAGES = LINEAR_STAGES
+    .filter(s => s.key !== MERGED_AWAY_KEY)
+    .map(s => (s.key === MERGED_SENT_KEY ? { ...s, label: MERGED_SENT_LABEL } : s));
 
   async function init() {
     // Demo badge is fire-and-forget; failure (e.g. /mode missing on an older
@@ -2038,7 +2089,7 @@
     if (view === 'applications') renderApplications();
     if (view === 'queue') refreshQueue();
     if (view === 'profile') refreshProfileView();
-    if (view === 'stats') renderStats();
+    if (view === 'stats') { rejFilterStage = null; renderStats(); }
     if (view === 'generator') ensureGenTimerStarted();
   }
 
@@ -2273,11 +2324,17 @@
       return top >= LINEAR_STAGES.findIndex(s => s.key === 'interview_1');
     }).length;
 
-    const stageDistribution = APP_STAGES.map(s => ({
-      key: s.key,
-      label: s.label,
-      count: apps.filter(a => a.stage === s.key).length,
-    }));
+    // Display-only merge: beide Keys landen in einem Donut-Segment.
+    const stageDistribution = APP_STAGES
+      .filter(s => s.key !== MERGED_AWAY_KEY)
+      .map(s => {
+        const keys = s.key === MERGED_SENT_KEY ? [MERGED_SENT_KEY, MERGED_AWAY_KEY] : [s.key];
+        return {
+          key: s.key,
+          label: s.key === MERGED_SENT_KEY ? MERGED_SENT_LABEL : s.label,
+          count: apps.filter(a => keys.includes(a.stage)).length,
+        };
+      });
 
     // Median days between stages
     const sentToInterview = [];
@@ -2318,6 +2375,55 @@
       if (key in months) months[key] += 1;
     });
 
+    // Absagen: wann sind sie in 'rejected' gerutscht? Quelle ist der letzte
+    // 'rejected'-Eintrag der Stage-Historie, Fallback aufs Bewerbungsdatum.
+    const rejections = [];
+    apps.filter(a => a.stage === 'rejected').forEach(a => {
+      const hits = (a.stage_history || []).filter(h => h.stage === 'rejected');
+      const hist = a.stage_history || [];
+      // Letzte Absage zählt: eine Bewerbung kann abgesagt, erneut versendet
+      // und wieder abgesagt worden sein — dann gilt der jüngste Verlauf.
+      let lastIdx = -1;
+      hist.forEach((h, i) => { if (h.stage === 'rejected') lastIdx = i; });
+      const before = hist
+        .slice(0, lastIdx < 0 ? 0 : lastIdx)
+        .filter(h => h.stage !== 'rejected');
+      const fromKey = before.length ? before[before.length - 1].stage : null;
+
+      const iso = hits.length ? hits[hits.length - 1].at : null;
+      const when = lastEventAt(a, 'rejected');
+      const sent = firstEventAt(a, 'application_sent') || isoToDate(a.applied_at);
+      rejections.push({
+        company: a.company,
+        position: a.position,
+        at: when,
+        atIso: iso,
+        fromKey,
+        days: (when && sent) ? daysBetween(sent, when) : null,
+      });
+    });
+    rejections.sort((x, y) => {
+      if (!x.at) return 1;
+      if (!y.at) return -1;
+      return y.at - x.at;
+    });
+
+    // Aus welcher Stufe heraus wurde abgesagt? Gruppiert nach der Stufe, die
+    // unmittelbar vor der Absage in der Historie stand.
+    const rejectionsByStage = LINEAR_STAGES.map(st => ({
+      key: st.key,
+      label: st.key === MERGED_SENT_KEY ? MERGED_SENT_LABEL : st.label,
+      count: rejections.filter(r => r.fromKey === st.key).length,
+    }));
+    // Display-Merge: 'Erstellt' fällt mit 'Versendet' in einen Topf.
+    const mergedSentIdx = rejectionsByStage.findIndex(x => x.key === MERGED_SENT_KEY);
+    const awayIdx = rejectionsByStage.findIndex(x => x.key === MERGED_AWAY_KEY);
+    if (mergedSentIdx >= 0 && awayIdx >= 0) {
+      rejectionsByStage[mergedSentIdx].count += rejectionsByStage[awayIdx].count;
+      rejectionsByStage.splice(awayIdx, 1);
+    }
+    const rejectionsUnknownStage = rejections.filter(r => !r.fromKey).length;
+
     // Rates
     const interviewRate = sentCount ? Math.round((interview1 / sentCount) * 100) : null;
     const offerRate     = interview1 ? Math.round((interview2 / interview1) * 100) : null;
@@ -2337,6 +2443,7 @@
       rejectedTotal, openCount, inInterview,
       stageDistribution, reached,
       months,
+      rejections, rejectionsByStage, rejectionsUnknownStage,
       medSentToInterview: median(sentToInterview),
       medInterviewToFollow: median(interviewToOffer),
       medSentToRejected: median(sentToRejected),
@@ -2394,10 +2501,16 @@
       </div>
     `;
 
-    // Funnel
-    const funnelMax = Math.max(...s.reached, 1);
-    const funnelHtml = LINEAR_STAGES.map((stage, i) => {
-      const count = s.reached[i];
+    // Funnel — 'Erstellt' und 'Versendet' teilen sich eine Zeile; sie zeigt die
+    // Zahl der erreichten 'Erstellt'-Stufe, weil auch eine nicht versendete
+    // Bewerbung die zusammengelegte Stufe erreicht hat.
+    const funnelCounts = FUNNEL_STAGES.map(stage => {
+      const srcKey = stage.key === MERGED_SENT_KEY ? MERGED_AWAY_KEY : stage.key;
+      return s.reached[LINEAR_STAGES.findIndex(x => x.key === srcKey)] || 0;
+    });
+    const funnelMax = Math.max(...funnelCounts, 1);
+    const funnelHtml = FUNNEL_STAGES.map((stage, i) => {
+      const count = funnelCounts[i];
       const pctOfTotal = s.total ? Math.round((count / s.total) * 100) : 0;
       const widthPct = (count / funnelMax) * 100;
       return `
@@ -2466,6 +2579,70 @@
         </div>`;
     }).join('');
 
+    // Absagen nach Ausgangsstufe: aus welcher Stufe heraus kam die Absage?
+    const rejTotal = s.rejections.length;
+    const rejStageMax = Math.max(1, ...s.rejectionsByStage.map(x => x.count));
+    const rejStageHtml = s.rejectionsByStage.map(x => {
+      const pct = rejTotal ? Math.round((x.count / rejTotal) * 100) : 0;
+      const widthPct = (x.count / rejStageMax) * 100;
+      const active = rejFilterStage === x.key;
+      return `
+        <div class="funnel-row rej-clickable${active ? ' active' : ''}"
+             onclick="toggleRejFilter('${x.key}')"
+             title="${active ? 'Filter aufheben' : 'Nur diese Absagen zeigen'}">
+          <div class="funnel-meta">
+            <span>${esc(x.label)}${active ? ' <span class="rej-filter-tag">gefiltert ✕</span>' : ''}</span>
+            <span class="funnel-meta-right">${x.count} · ${pct} %</span>
+          </div>
+          <div class="funnel-bar-track">
+            <div class="funnel-bar-fill warn" style="width:${widthPct}%"></div>
+          </div>
+        </div>`;
+    }).join('');
+
+    const stageLabelFor = key => {
+      if (!key) return 'unbekannt';
+      if (key === MERGED_AWAY_KEY) return MERGED_SENT_LABEL;
+      const hit = APP_STAGES.find(x => x.key === key);
+      return hit ? (key === MERGED_SENT_KEY ? MERGED_SENT_LABEL : hit.label) : key;
+    };
+
+    // Der zusammengelegte Balken sammelt beide Keys ein.
+    const rejFilterKeys = rejFilterStage === MERGED_SENT_KEY
+      ? [MERGED_SENT_KEY, MERGED_AWAY_KEY]
+      : (rejFilterStage ? [rejFilterStage] : null);
+    const rejVisible = rejFilterKeys
+      ? s.rejections.filter(r => rejFilterKeys.includes(r.fromKey))
+      : s.rejections;
+
+    const rejFilterBar = rejFilterStage
+      ? `<div class="rej-filter-bar">
+           <span>Gefiltert: <strong>${esc(stageLabelFor(rejFilterStage))}</strong> · ${rejVisible.length} von ${rejTotal}</span>
+           <button type="button" class="rej-filter-reset" onclick="toggleRejFilter(null)">Alle zeigen</button>
+         </div>`
+      : '';
+
+    const rejListHtml = rejVisible.length
+      ? rejVisible.map(r => `
+          <div class="rej-row">
+            <div style="min-width:0">
+              <div class="rej-row-name">${esc(r.company || '—')}</div>
+              <div class="rej-row-meta">${esc(r.position || '')}</div>
+            </div>
+            <div class="rej-row-right">
+              <div class="rej-row-date">aus: ${esc(stageLabelFor(r.fromKey))}</div>
+              <div class="rej-row-days">${r.atIso ? esc(formatAppDate(r.atIso)) : 'ohne Datum'}</div>
+            </div>
+          </div>`).join('')
+      : `<div class="stats-empty" style="padding:1rem">${
+          rejFilterStage ? 'Keine Absagen aus dieser Stufe.' : 'Keine Absagen erfasst.'
+        }</div>`;
+
+    const rejectionsHtml = `
+      ${rejStageHtml}
+      ${rejFilterBar}
+      <div class="rej-list" style="margin-top:${rejFilterStage ? '0.5rem' : '1rem'}">${rejListHtml}</div>`;
+
     // Median time list
     const medianHtml = `
       <div class="median-list">
@@ -2518,7 +2695,22 @@
           ${medianHtml}
         </div>
       </div>
+      <div class="stats-panel" style="margin-top:1rem">
+        <div class="stats-panel-title">Absagen nach Ausgangsstufe</div>
+        <div class="stats-panel-sub">
+          Aus welcher Stufe heraus die Absage kam — also wie weit die Bewerbung vor dem „Abgesagt“ gekommen war.${
+            s.rejectionsUnknownStage ? ` ${s.rejectionsUnknownStage} ohne erkennbare Vorstufe.` : ''
+          }
+        </div>
+        ${rejectionsHtml}
+      </div>
     `;
+  }
+
+  // Klick auf einen Balken im Absagen-Panel: gleiche Stufe erneut = Filter aus.
+  function toggleRejFilter(key) {
+    rejFilterStage = (key && rejFilterStage !== key) ? key : null;
+    renderStats();
   }
 
   function getFilteredSortedApplications() {
