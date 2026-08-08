@@ -90,6 +90,45 @@ LAYOUTS = {
     },
 }
 
+# Extra CSS for the project list ("Projektliste"). Appended AFTER a layout's
+# base style so it inherits the CV's fonts/colors and reads as the same family
+# of documents. Only `.pl-*` classes are defined here — the base style keeps
+# ownership of body/h1/h2/a. `body.pl-classic` variants drop the card look so
+# the serif layout stays flat like its CV counterpart.
+PROJECT_LIST_STYLE = """<style>
+  .pl-doc-title { font-size:1.15em; font-weight:700; color:#4B5D67; margin:0.6em 0 0.2em 0; }
+  .pl-intro { font-size:0.9em; color:#555; margin:0.2em 0 0 0; }
+  .pl-project { margin-bottom:0.7em; padding:0.9em 1.1em; border:1px solid #e0e0e0; border-radius:8px; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.05); page-break-inside:avoid; break-inside:avoid; }
+  .pl-head { display:flex; justify-content:space-between; align-items:baseline; gap:1em; border-bottom:1px solid #ececec; padding-bottom:0.35em; margin-bottom:0.45em; }
+  .pl-title { font-size:1.05em; font-weight:700; color:#2c3e50; }
+  .pl-num { color:#8a9aa4; font-weight:700; margin-right:0.4em; }
+  .pl-badge { font-size:0.78em; font-weight:600; color:#41535d; background:#eef2f4; border-radius:10px; padding:0.12em 0.6em; white-space:nowrap; }
+  .pl-meta { display:flex; flex-wrap:wrap; gap:0.2em 1.1em; font-size:0.82em; color:#6c757d; margin-bottom:0.5em; }
+  .pl-meta-item strong { color:#4B5D67; font-weight:600; }
+  .pl-fields { display:grid; grid-template-columns:112px 1fr; gap:0.32em 0.9em; margin:0; }
+  .pl-fields dt { font-size:0.82em; font-weight:700; color:#4B5D67; }
+  .pl-fields dd { margin:0; font-size:0.88em; color:#333; line-height:1.45; }
+  .pl-fields dd ul { margin:0; padding-left:15px; }
+  .pl-fields dd li { font-size:1em; margin:0.1em 0; }
+  .pl-tech span { display:inline-block; background:#eef2f4; border-radius:3px; padding:0.1em 0.45em; margin:0 0.25em 0.2em 0; font-size:0.95em; color:#41535d; }
+  .pl-result { font-weight:600; color:#2c3e50; }
+
+  body.pl-classic .pl-project { border:none; border-radius:0; box-shadow:none; background:transparent; padding:0; margin-bottom:1.1em; border-bottom:1px solid #ddd; padding-bottom:0.8em; }
+  body.pl-classic .pl-project:last-of-type { border-bottom:none; }
+  body.pl-classic .pl-head { border-bottom:none; padding-bottom:0.1em; }
+  body.pl-classic .pl-title { color:#000; }
+  body.pl-classic .pl-fields dt,
+  body.pl-classic .pl-meta-item strong { color:#000; }
+  body.pl-classic .pl-badge,
+  body.pl-classic .pl-tech span { background:transparent; border:1px solid #bbb; border-radius:2px; color:#333; }
+  body.pl-classic .pl-doc-title { color:#000; }
+  /* The classic base styles .header-sub, not .contact — restore the row here. */
+  body.pl-classic .contact { display:flex; flex-wrap:wrap; gap:0.4em 1.2em; font-size:0.88em; color:#555; margin-top:0.5em; }
+  body.pl-classic .contact-item { display:flex; align-items:center; gap:0.4em; }
+
+  @media print { .pl-project { page-break-inside:avoid; break-inside:avoid; } }
+</style>"""
+
 ANSCHREIBEN_HTML_STYLE = """<style>
   body { font-family:"Inter","Lato",sans-serif; margin:10px auto; max-width:800px; padding:10px; color:#2c3e50; line-height:1.5; background:#f8f9fa; font-size:11px; }
   .header { margin-bottom:0.8em; padding:1.5em; border:1px solid #e0e0e0; border-radius:8px; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.05); }

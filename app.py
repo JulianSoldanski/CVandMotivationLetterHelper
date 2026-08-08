@@ -2,6 +2,7 @@ import os
 import json
 import uuid
 import re
+import hashlib
 import requests as http_requests
 from bs4 import BeautifulSoup
 from flask import Flask, render_template, request, jsonify, Response, make_response
@@ -11,7 +12,9 @@ from dotenv import load_dotenv
 from datetime import date, datetime
 from urllib.parse import urlsplit, urlunsplit, parse_qsl, urlencode
 
-from cv_layouts import ANSCHREIBEN_HTML_STYLE, LAYOUTS
+from html import escape as html_escape
+
+from cv_layouts import ANSCHREIBEN_HTML_STYLE, LAYOUTS, PROJECT_LIST_STYLE
 from personal_config import get_candidate_base, get_contact, sender_address_html
 import db
 import demo_mode
@@ -57,8 +60,10 @@ APPLICATION_STAGES = [
 ]
 CV_DIR            = os.path.join(os.path.dirname(__file__), "cvs")
 ANSCHREIBEN_DIR   = os.path.join(os.path.dirname(__file__), "anschreiben")
+PROJEKTLISTE_DIR  = os.path.join(os.path.dirname(__file__), "projektliste")
 os.makedirs(CV_DIR, exist_ok=True)
 os.makedirs(ANSCHREIBEN_DIR, exist_ok=True)
+os.makedirs(PROJEKTLISTE_DIR, exist_ok=True)
 
 
 # ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -74,6 +79,261 @@ def load_projects() -> list:
 def save_projects(projects: list):
     with open(PROJECTS_FILE, "w", encoding="utf-8") as f:
         json.dump(projects, f, ensure_ascii=False, indent=2)
+
+
+# Fields of the long-form project entry ("Projektliste"). Client, period and
+# technologies are language-neutral and stored once; everything a reader
+# actually reads as prose is kept per language, because the same project gets
+# handed to German and English recruiters alike.
+#
+# The project's own `title`/`description` are the author's source text in
+# whichever language they happened to write it — `detail[<lang>]` holds the
+# printable version for that language. Renderers must read the localized block,
+# never the source fields, or a German entry ends up in an English document.
+PROJECT_DETAIL_LANGS  = ("de", "en")
+PROJECT_DETAIL_SHARED = ("client", "period", "team_size")
+# Prose fields inside a localized block; `contributions` is a list, the rest strings.
+PROJECT_LOCALIZED_TEXT = ("title", "summary", "role", "situation", "result", "team_size")
+PROJECT_LOCALIZED_LIST = ("contributions",)
+# Projects per translation request — small enough that the reply can't hit the
+# output token limit, large enough to keep a full list to a couple of calls.
+PROJECT_TRANSLATE_BATCH = 6
+
+
+def normalize_project_detail(raw: dict | None) -> dict:
+    """Coerce arbitrary input into the project-detail shape (never raises).
+
+    Missing pieces come back as empty strings / lists rather than None so the
+    renderer and the editor can treat "not filled in yet" uniformly.
+    """
+    raw = raw if isinstance(raw, dict) else {}
+
+    def _s(value) -> str:
+        return value.strip() if isinstance(value, str) else ""
+
+    def _list(value) -> list:
+        if isinstance(value, str):
+            value = value.splitlines()
+        if not isinstance(value, list):
+            return []
+        return [_s(v) for v in value if _s(v)]
+
+    detail = {key: _s(raw.get(key)) for key in PROJECT_DETAIL_SHARED}
+    detail["technologies"] = _list(raw.get("technologies"))
+    detail["in_list"]      = bool(raw.get("in_list", True))
+    for lang in PROJECT_DETAIL_LANGS:
+        block = raw.get(lang) if isinstance(raw.get(lang), dict) else {}
+        loc = {field: _s(block.get(field)) for field in PROJECT_LOCALIZED_TEXT}
+        loc.update({field: _list(block.get(field)) for field in PROJECT_LOCALIZED_LIST})
+        # Bookkeeping for the auto-translation: `auto` lists the fields that were
+        # machine-written (only those may be refreshed later), `src` fingerprints
+        # the source text they were derived from.
+        loc["auto"] = [f for f in _list(block.get("auto")) if f in PROJECT_LOCALIZED_TEXT + PROJECT_LOCALIZED_LIST]
+        loc["src"]  = _s(block.get("src"))
+        detail[lang] = loc
+    return detail
+
+
+def project_detail_filled(detail: dict) -> bool:
+    """True if the entry carries any long-form content worth printing."""
+    if any(detail.get(key) for key in PROJECT_DETAIL_SHARED) or detail.get("technologies"):
+        return True
+    return any(
+        detail.get(lang, {}).get(field)
+        for lang in PROJECT_DETAIL_LANGS
+        for field in ("role", "situation", "contributions", "result")
+    )
+
+
+def project_locale(project: dict, language: str) -> dict:
+    """The localized block a renderer should print for `language`.
+
+    Always returns a fully-shaped block, so callers can read any field without
+    null-checks. An unknown language falls back to German.
+    """
+    detail = normalize_project_detail(project.get("detail"))
+    return detail.get(language) or detail["de"]
+
+
+def _project_source_fingerprint(project: dict, detail: dict) -> str:
+    """Fingerprint of the text a translation is derived from.
+
+    Changes when the author edits the project's title, description or team
+    size, which is exactly when a cached machine translation goes stale.
+    """
+    raw = "\x1f".join([
+        project.get("title", "") or "",
+        project.get("description", "") or "",
+        detail.get("team_size", "") or "",
+    ])
+    return hashlib.sha1(raw.encode("utf-8")).hexdigest()[:12]
+
+
+def _project_needs_translation(project: dict, detail: dict, language: str) -> bool:
+    """True if printing this project in `language` would fall back to source text.
+
+    Also true when the source text changed since the cached translation was
+    made — otherwise an edited description keeps showing its stale translation.
+    """
+    loc   = detail[language]
+    other = detail["en" if language == "de" else "de"]
+
+    # Once a block has been machine-filled, the fingerprint alone decides: same
+    # source text means nothing to do (so a field the model happened to drop
+    # isn't retried on every single render), changed source means redo it.
+    if loc["src"]:
+        return loc["src"] != _project_source_fingerprint(project, detail)
+    if project.get("title") and not loc["title"]:
+        return True
+    if project.get("description") and not loc["summary"]:
+        return True
+    if detail["team_size"] and not loc["team_size"]:
+        return True
+    # Long-form content drafted in one language only.
+    if any(other[field] and not loc[field] for field in ("role", "situation", "result", "contributions")):
+        return True
+    return False
+
+
+def _translate_project_blocks(pending: list, language: str) -> dict:
+    """Translate every pending project into `language` in a single Gemini call.
+
+    Source material is each project's own text plus whatever was already
+    drafted in the other language, so a project with a full long-form German
+    entry comes back as a full English one instead of a bare title.
+
+    Returns {project_id: localized_block}.
+    """
+    target = "German" if language == "de" else "English"
+    other  = "en" if language == "de" else "de"
+
+    items = []
+    for project, detail in pending:
+        src = detail[other]
+        items.append({
+            "id":            project.get("id", ""),
+            "title":         project.get("title", ""),
+            "description":   project.get("description", ""),
+            "team_size":     detail["team_size"],
+            "role":          src["role"],
+            "situation":     src["situation"],
+            "contributions": src["contributions"],
+            "result":        src["result"],
+        })
+
+    prompt = f"""You translate CV project entries. Output language: {target}.
+
+Translate every field of every project below into {target}. Source text may
+already be in {target} — then return it unchanged apart from obvious fixes.
+
+PROJECTS (JSON):
+{json.dumps(items, ensure_ascii=False, indent=1)}
+
+Respond with JSON only, in exactly this structure:
+{{
+  "projects": [
+    {{
+      "id": "the id from the input, unchanged",
+      "title": "project title in {target}",
+      "summary": "the description in {target}, same length and level of detail",
+      "role": "in {target}, or \\"\\" if the input field was empty",
+      "situation": "in {target}, or \\"\\"",
+      "contributions": ["in {target}, same number of bullets, [] if input was empty"],
+      "result": "in {target}, or \\"\\"",
+      "team_size": "in {target} (e.g. \\"4 Personen\\" <-> \\"4 people\\"), or \\"\\""
+    }}
+  ]
+}}
+
+Rules:
+- One object per input project, same ids, nothing invented, nothing dropped.
+- Translate, do not rewrite: keep every fact, number, grade and claim as-is.
+- Keep proper nouns untranslated (companies, universities, product and tool
+  names, technologies like React or Python). Translate degree names, course
+  titles, roles and generic descriptions.
+- An empty input field stays empty in the output — never fill a gap.
+"""
+    result = _call_gemini_json(prompt, 8192)
+    blocks = {}
+    for entry in (result.get("projects") or []):
+        if isinstance(entry, dict) and entry.get("id"):
+            blocks[str(entry["id"])] = entry
+    return blocks
+
+
+def ensure_project_language(projects: list, language: str) -> list:
+    """Guarantee every project can be printed entirely in `language`.
+
+    Missing (or stale) localized text is translated once and cached back into
+    projects.json, so later renders and the project editor reuse it. Only
+    machine-written fields are ever overwritten — anything typed by hand in the
+    editor stays untouched.
+
+    Best-effort by design: without an API key, or when the call fails, the
+    projects come back with their source text and the renderers fall back to it
+    as before. A document is never blocked on a translation.
+    """
+    if language not in PROJECT_DETAIL_LANGS:
+        language = "de"
+    for p in projects:
+        p["detail"] = normalize_project_detail(p.get("detail"))
+
+    pending = [(p, p["detail"]) for p in projects if _project_needs_translation(p, p["detail"], language)]
+    if not pending or not os.environ.get("GEMINI_API_KEY"):
+        return projects
+
+    # Chunked so a long project list can't run into the output token limit and
+    # come back truncated — a half-parsed batch would translate nothing at all.
+    blocks: dict = {}
+    for start in range(0, len(pending), PROJECT_TRANSLATE_BATCH):
+        chunk = pending[start:start + PROJECT_TRANSLATE_BATCH]
+        try:
+            blocks.update(_translate_project_blocks(chunk, language))
+        except Exception as e:
+            print(f"[projects] translation to {language} failed for {len(chunk)} project(s), using source text: {e}")
+
+    changed = False
+    for project, detail in pending:
+        block = blocks.get(str(project.get("id", "")))
+        if not block:
+            continue
+        loc   = detail[language]
+        fresh = normalize_project_detail({language: block})[language]
+        auto  = list(loc["auto"])
+        for field in PROJECT_LOCALIZED_TEXT + PROJECT_LOCALIZED_LIST:
+            # Hand-written text wins: only empty fields and earlier machine
+            # output get replaced.
+            if loc[field] and field not in auto:
+                continue
+            if not fresh[field]:
+                continue
+            loc[field] = fresh[field]
+            if field not in auto:
+                auto.append(field)
+        loc["auto"] = auto
+        loc["src"]  = _project_source_fingerprint(project, detail)
+        changed = True
+
+    if changed:
+        _persist_project_details(projects)
+    return projects
+
+
+def _persist_project_details(projects: list):
+    """Cache the freshly translated blocks without clobbering concurrent edits.
+
+    Only the `detail` of known ids is written back; everything else on disk
+    (including projects added or edited in another tab meanwhile) is kept.
+    """
+    details = {p["id"]: p["detail"] for p in projects if p.get("id")}
+    try:
+        stored = load_projects()
+        for p in stored:
+            if p.get("id") in details:
+                p["detail"] = details[p["id"]]
+        save_projects(stored)
+    except OSError as e:
+        print(f"[projects] could not cache translations: {e}")
 
 
 def load_settings() -> dict:
@@ -362,15 +622,24 @@ def profile_to_text(profile: dict) -> str:
     return "\n".join(lines)
 
 
-def projects_to_text(projects: list) -> str:
+def projects_to_text(projects: list, language: str = "de") -> str:
+    """Project block for the generation prompts, already in the output language.
+
+    Feeding the model pre-translated text keeps it from having to translate and
+    tailor in one step — which is where German titles used to survive into an
+    English CV.
+    """
     visible = [p for p in projects if p.get("visible", True)]
     if not visible:
         return "(keine Projekte vorhanden)"
     lines = []
     for p in visible:
+        loc       = project_locale(p, language)
+        title     = loc["title"] or p["title"]
+        desc      = loc["summary"] or p["description"]
         grade_str = f" (Note: {p['grade']})" if p.get("grade") else ""
         tags_str  = f" [Tags: {', '.join(p['tags'])}]" if p.get("tags") else ""
-        lines.append(f"- {p['title']}{grade_str}{tags_str}:\n  {p['description']}")
+        lines.append(f"- {title}{grade_str}{tags_str}:\n  {desc}")
     return "\n".join(lines)
 
 
@@ -484,7 +753,7 @@ def generate_cv_content(
     language: str, custom_notes: str, projects: list
 ) -> dict:
     out_lang = "German" if language == "de" else "English"
-    projects_text = projects_to_text(projects)
+    projects_text = projects_to_text(projects, language)
     notes_block = f"\nAPPLICANT NOTES (must be incorporated):\n{custom_notes}\n" if custom_notes.strip() else ""
     profile_text = profile_to_text(load_profile())
     profile = load_profile()
@@ -926,7 +1195,7 @@ def generate_anschreiben_content(
 ) -> dict:
     lang = "auf Deutsch" if language == "de" else "in English"
     today = date.today().strftime("%d. %B %Y") if language == "de" else date.today().strftime("%B %d, %Y")
-    projects_text = projects_to_text(projects)
+    projects_text = projects_to_text(projects, language)
     notes_block = f"\nEIGENE HINWEISE (unbedingt einarbeiten):\n{custom_notes}\n" if custom_notes.strip() else ""
     profile_text = profile_to_text(load_profile())
 
@@ -1081,8 +1350,11 @@ def _render_projects(projects_content: list, all_projects: list, language: str =
         p     = proj_map.get(pid)
         if not p:
             continue
-        title = (item.get("title") if isinstance(item, dict) else None) or p["title"]
-        desc  = (item.get("description") if isinstance(item, dict) else None) or p["description"]
+        # Fall back to the localized entry, not to the raw source fields — those
+        # are in whichever language the project happened to be written in.
+        loc   = project_locale(p, language)
+        title = (item.get("title") if isinstance(item, dict) else None) or loc["title"] or p["title"]
+        desc  = (item.get("description") if isinstance(item, dict) else None) or loc["summary"] or p["description"]
         grade = f" ({grade_label}: {p['grade']})" if p.get("grade") else ""
         link_html = ""
         if p.get("link"):
@@ -1216,6 +1488,155 @@ def render_cv_html(content: dict, layout: str, language: str, all_projects: list
 {ldef['style']}
 </head>
 <body>
+{body}
+</body>
+</html>"""
+
+
+PROJECT_LIST_I18N = {
+    "de": {
+        "doc_title":  "Projektliste",
+        "intro":      "Ausgewählte Projekte im Detail — Ausgangslage, eigener Beitrag, eingesetzte Technologien und Ergebnis.",
+        "client":     "Kunde/Arbeitgeber",
+        "period":     "Zeitraum",
+        "role":       "Rolle",
+        "team":       "Team",
+        "situation":  "Ausgangslage",
+        "contrib":    "Mein Beitrag",
+        "tech":       "Technologien",
+        "result":     "Ergebnis",
+        "summary":    "Kurzbeschreibung",
+        "link":       "Link",
+        "grade":      "Note",
+    },
+    "en": {
+        "doc_title":  "Project List",
+        "intro":      "Selected projects in detail — starting point, my contribution, technologies used and outcome.",
+        "client":     "Client/Employer",
+        "period":     "Period",
+        "role":       "Role",
+        "team":       "Team",
+        "situation":  "Starting point",
+        "contrib":    "My contribution",
+        "tech":       "Technologies",
+        "result":     "Outcome",
+        "summary":    "Summary",
+        "link":       "Link",
+        "grade":      "Grade",
+    },
+}
+
+
+def _pl_link_html(url: str) -> str:
+    """Link cell: full URL in href, protocol stripped for display (as on the CV)."""
+    display = re.sub(r"^https?://", "", url).rstrip("/")
+    return f'<a href="{html_escape(url, quote=True)}" target="_blank" rel="noopener noreferrer">{html_escape(display)}</a>'
+
+
+def _render_project_list_entry(project: dict, index: int, t: dict, language: str) -> str:
+    """One project as a clearly delimited block.
+
+    Falls back to the short CV data (description as summary, tags as
+    technologies) for projects whose long-form fields aren't filled in yet, so
+    the list is usable before every entry has been elaborated.
+    """
+    detail = normalize_project_detail(project.get("detail"))
+    loc    = detail.get(language) or detail["de"]
+
+    title = loc["title"] or project.get("title", "")
+    head_right = f'<span class="pl-badge">{t["grade"]} {html_escape(str(project["grade"]))}</span>' if project.get("grade") else ""
+
+    meta_bits = []
+    for label, value in (
+        (t["client"], detail["client"]),
+        (t["period"], detail["period"]),
+        (t["role"],   loc["role"]),
+        (t["team"],   loc["team_size"] or detail["team_size"]),
+    ):
+        if value:
+            meta_bits.append(f'<span class="pl-meta-item"><strong>{label}:</strong> {html_escape(value)}</span>')
+    meta_html = f'<div class="pl-meta">{"".join(meta_bits)}</div>' if meta_bits else ""
+
+    rows = []
+    if loc["situation"]:
+        rows.append((t["situation"], html_escape(loc["situation"])))
+    if loc["contributions"]:
+        bullets = "".join(f"<li>{html_escape(c)}</li>" for c in loc["contributions"])
+        rows.append((t["contrib"], f"<ul>{bullets}</ul>"))
+    if not loc["situation"] and not loc["contributions"]:
+        summary = loc["summary"] or project.get("description", "")
+        if summary:
+            rows.append((t["summary"], html_escape(summary)))
+
+    techs = detail["technologies"] or project.get("tags", [])
+    if techs:
+        tags_html = "".join(f"<span>{html_escape(tech)}</span>" for tech in techs)
+        rows.append((t["tech"], f'<span class="pl-tech">{tags_html}</span>'))
+    if loc["result"]:
+        rows.append((t["result"], f'<span class="pl-result">{html_escape(loc["result"])}</span>'))
+    if project.get("link"):
+        rows.append((t["link"], _pl_link_html(project["link"])))
+
+    fields_html = "".join(f"<dt>{label}</dt><dd>{value}</dd>" for label, value in rows)
+
+    return f"""<div class="pl-project">
+  <div class="pl-head">
+    <div class="pl-title"><span class="pl-num">{index:02d}</span>{html_escape(title)}</div>
+    {head_right}
+  </div>
+  {meta_html}
+  <dl class="pl-fields">{fields_html}</dl>
+</div>"""
+
+
+def select_project_list_entries(all_projects: list, ids: list | None) -> list:
+    """Resolve which projects go into the list, preserving the requested order.
+
+    With explicit ids the caller decides (order included); without, everything
+    flagged for the list is used, falling back to the CV-visible projects so a
+    fresh install still prints something.
+    """
+    by_id = {p["id"]: p for p in all_projects if p.get("id")}
+    if ids:
+        return [by_id[pid] for pid in ids if pid in by_id]
+    flagged = [p for p in all_projects if normalize_project_detail(p.get("detail"))["in_list"]]
+    return flagged or [p for p in all_projects if p.get("visible", True)]
+
+
+def render_project_list_html(all_projects: list, language: str, layout: str, ids: list | None = None) -> str:
+    t = PROJECT_LIST_I18N.get(language, PROJECT_LIST_I18N["de"])
+    c = get_contact()
+    # Only "modern" and "classic" have a base style that works standalone —
+    # "sidebar" is built around a two-column .page shell the list doesn't use.
+    layout   = layout if layout in ("modern", "classic") else "modern"
+    base     = LAYOUTS[layout]["style"]
+    entries  = select_project_list_entries(all_projects, ids)
+    body     = "\n".join(
+        _render_project_list_entry(p, i, t, language) for i, p in enumerate(entries, start=1)
+    )
+
+    header = f"""<div class="header">
+  <h1>{c["full_name"]}</h1>
+  <div class="pl-doc-title">{t["doc_title"]}</div>
+  <p class="pl-intro">{t["intro"]}</p>
+  <div class="contact">
+    <div class="contact-item"><span>📍</span><span>{c["address_dot"]}</span></div>
+    <div class="contact-item"><span>📞</span><span>{c["phone"]}</span></div>
+    <div class="contact-item"><span>✉️</span><a href="mailto:{c["email"]}">{c["email"]}</a></div>
+  </div>
+</div>"""
+
+    return f"""<!DOCTYPE html>
+<html lang="{language}">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>{c["full_name"]} - {t["doc_title"]}</title>
+{base}
+{PROJECT_LIST_STYLE}
+</head>
+<body class="pl-{layout}">
+{header}
 {body}
 </body>
 </html>"""
@@ -1360,7 +1781,7 @@ def generate():
     company_address = data.get("company_address", "").strip()
     resolved_layout = pick_layout(job_posting, company, position, layout)
 
-    projects = load_projects()
+    projects = ensure_project_language(load_projects(), language)
     result   = {"layout_used": resolved_layout, "job_posting": job_posting}
 
     try:
@@ -1422,7 +1843,7 @@ def render_doc():
     data     = request.json
     doc_type = data.get("doc_type", "cv")
     language = data.get("language", "de")
-    projects = load_projects()
+    projects = ensure_project_language(load_projects(), language)
 
     try:
         if doc_type == "cv":
@@ -1452,7 +1873,10 @@ def save_doc():
     if not safe.endswith(".html"):
         safe = safe.rsplit(".", 1)[0] + ".html"
 
-    folder = ANSCHREIBEN_DIR if doc_type == "anschreiben" else CV_DIR
+    folder = {
+        "anschreiben":  ANSCHREIBEN_DIR,
+        "projektliste": PROJEKTLISTE_DIR,
+    }.get(doc_type, CV_DIR)
     path   = os.path.join(folder, safe)
 
     with open(path, "w", encoding="utf-8") as f:
@@ -1685,7 +2109,12 @@ def delete_profile_list_item(list_name, item_id):
 
 @app.route("/projects", methods=["GET"])
 def get_projects():
-    return jsonify(load_projects())
+    # Hand out a fully-shaped `detail` even for entries stored before the
+    # project list existed, so the editor never has to null-check its fields.
+    projects = load_projects()
+    for p in projects:
+        p["detail"] = normalize_project_detail(p.get("detail"))
+    return jsonify(projects)
 
 
 @app.route("/projects", methods=["POST"])
@@ -1701,6 +2130,7 @@ def add_project():
         "grade":       data.get("grade") or None,
         "link":        (data.get("link") or "").strip() or None,
         "visible":     data.get("visible", True),
+        "detail":      normalize_project_detail(data.get("detail")),
     }
     projects = load_projects()
     projects.append(project)
@@ -1721,6 +2151,8 @@ def update_project(project_id):
             if "link" in data:
                 p["link"]    = (data.get("link") or "").strip() or None
             p["visible"]     = data.get("visible", p.get("visible", True))
+            if "detail" in data:
+                p["detail"]  = normalize_project_detail(data["detail"])
             save_projects(projects)
             return jsonify(p)
     return jsonify({"error": "Projekt nicht gefunden."}), 404
@@ -1734,6 +2166,90 @@ def delete_project(project_id):
         return jsonify({"error": "Projekt nicht gefunden."}), 404
     save_projects(new_list)
     return jsonify({"ok": True})
+
+
+@app.route("/project-list/render", methods=["POST"])
+def render_project_list():
+    data     = request.json or {}
+    language = data.get("language", "de")
+    layout   = data.get("layout", "modern")
+    ids      = data.get("ids") if isinstance(data.get("ids"), list) else None
+    try:
+        projects = ensure_project_language(load_projects(), language)
+        html = render_project_list_html(projects, language, layout, ids)
+    except Exception as e:
+        return jsonify({"error": f"Render-Fehler: {str(e)}"}), 500
+    return jsonify({"html": html})
+
+
+@app.route("/project-list/draft", methods=["POST"])
+def draft_project_detail():
+    """Draft the long-form fields for one project from its short CV entry.
+
+    Deliberately conservative: the model may rephrase what's there, but client,
+    period and team size are left empty unless the source text names them —
+    a project list with invented facts is worse than one with gaps.
+    """
+    if not os.environ.get("GEMINI_API_KEY"):
+        return jsonify({"error": "GEMINI_API_KEY nicht gesetzt."}), 500
+
+    data       = request.json or {}
+    project_id = data.get("id")
+    project    = next((p for p in load_projects() if p["id"] == project_id), None) if project_id else None
+    title      = (data.get("title")       or (project or {}).get("title", "")).strip()
+    desc       = (data.get("description") or (project or {}).get("description", "")).strip()
+    if not title or not desc:
+        return jsonify({"error": "Titel und Beschreibung erforderlich."}), 400
+
+    tags     = data.get("tags") or (project or {}).get("tags", [])
+    grade    = data.get("grade") or (project or {}).get("grade")
+    existing = normalize_project_detail(data.get("detail") or (project or {}).get("detail"))
+
+    prompt = f"""Du bereitest eine Projektliste (Referenzliste) für Bewerbungen bei Beratungen auf.
+Wandle den folgenden Kurzeintrag in strukturierte Projektangaben um — auf Deutsch UND auf Englisch.
+
+PROJEKT-TITEL: {title}
+BESCHREIBUNG: {desc}
+TAGS: {", ".join(tags) if tags else "-"}
+NOTE: {grade or "-"}
+BEREITS ERFASST (falls gefüllt, übernehmen statt neu erfinden):
+{json.dumps(existing, ensure_ascii=False)}
+
+Antworte NUR mit JSON in exakt dieser Struktur:
+{{
+  "client": "Auftraggeber/Arbeitgeber/Hochschule, sonst \\"\\"",
+  "period": "z.B. 03/2024 – 07/2024, sonst \\"\\"",
+  "team_size": "z.B. 4 Personen, sonst \\"\\"",
+  "technologies": ["konkrete Technologien, Methoden, Tools"],
+  "de": {{
+    "title": "sachlicher Projekttitel (was es war, nicht der interne Name)",
+    "summary": "die Kurzbeschreibung auf Deutsch (wird im Lebenslauf genutzt)",
+    "role": "z.B. Fullstack-Entwickler, Requirements Engineer",
+    "situation": "EIN Satz zum Ausgangsproblem",
+    "contributions": ["2-3 aktiv formulierte Stichpunkte, beginnend mit einem Verb"],
+    "result": "EIN Satz: was sich messbar oder erkennbar geändert hat",
+    "team_size": "Teamgröße auf Deutsch, z.B. \\"4 Personen\\", sonst \\"\\""
+  }},
+  "en": {{ "title": "...", "summary": "...", "role": "...", "situation": "...", "contributions": ["..."], "result": "...", "team_size": "e.g. \\"4 people\\"" }}
+}}
+
+Regeln:
+- KEINE Fakten erfinden. Wenn Kunde, Zeitraum oder Teamgröße nicht aus dem Text hervorgehen: leerer String.
+- "result" nur aus Belegbarem ableiten (z.B. Note, Hackathon-Sieg, ausgelieferter Prototyp) — keine erfundenen Prozentzahlen.
+- Stichpunkte kurz halten (max. ~15 Wörter), aktiv, ohne "Ich".
+- Die englische Fassung ist eine Übersetzung derselben Aussagen, keine neue Version.
+- JEDES Textfeld muss in der Sprache seines Blocks stehen: der "de"-Block
+  vollständig auf Deutsch, der "en"-Block vollständig auf Englisch — auch dann,
+  wenn Titel oder Beschreibung oben in der jeweils anderen Sprache verfasst sind.
+"""
+    try:
+        result = _call_gemini_json(prompt, 2048)
+    except Exception as e:
+        return jsonify({"error": f"Gemini-Fehler: {str(e)}"}), 500
+
+    detail = normalize_project_detail(result)
+    detail["in_list"] = existing["in_list"]
+    return jsonify({"detail": detail})
 
 
 @app.route("/settings", methods=["GET"])
