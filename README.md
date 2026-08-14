@@ -5,12 +5,6 @@ CV and cover letter** using Google Gemini, with an editor, a job summary,
 an application tracker, and an AI-distilled "writing style" the cover
 letters mimic.
 
-Originally a one-trick generator. Grew into a small personal toolchain for
-managing the entire job-application loop end-to-end.
-
-> Built solo as a side project. Development decisions are logged in
-> [docs/JOURNAL.md](docs/JOURNAL.md) — the "why" behind each feature.
-
 ---
 
 ## Walkthrough
