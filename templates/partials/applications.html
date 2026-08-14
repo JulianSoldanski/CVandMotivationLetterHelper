@@ -1,0 +1,37 @@
+<!-- APPLICATIONS VIEW -->
+<div id="applicationsView" style="display:none">
+  <div class="apps-wrap">
+    <div class="apps-toolbar">
+      <div>
+        <h2 class="apps-title">Bewerbungen</h2>
+        <p class="apps-sub" id="appsSub">Lade Bewerbungen…</p>
+      </div>
+      <button class="apps-add-btn" onclick="openApplicationModal()">+ Bewerbung hinzufügen</button>
+    </div>
+    <div class="apps-filters" id="appsFilters">
+      <div class="apps-filter-group search">
+        <label for="appsFilterSearch">Suche</label>
+        <input type="search" id="appsFilterSearch" placeholder="Firma oder Position…" oninput="onAppsFilterChange()" autocomplete="off" />
+      </div>
+      <div class="apps-filter-group">
+        <label for="appsFilterStage">Status</label>
+        <select id="appsFilterStage" onchange="onAppsFilterChange()">
+          <option value="">Alle</option>
+        </select>
+      </div>
+      <div class="apps-filter-group">
+        <label for="appsFilterSort">Sortierung</label>
+        <select id="appsFilterSort" onchange="onAppsFilterChange()">
+          <option value="updated_desc">Zuletzt bearbeitet</option>
+          <option value="applied_desc">Bewerbungsdatum (neueste)</option>
+          <option value="applied_asc">Bewerbungsdatum (älteste)</option>
+          <option value="company_asc">Firma (A–Z)</option>
+        </select>
+      </div>
+      <span class="apps-filter-count" id="appsFilterCount"></span>
+    </div>
+    <div class="apps-list" id="applicationsList"></div>
+
+  </div>
+</div>
+

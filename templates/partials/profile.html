@@ -1,0 +1,104 @@
+<!-- PROFILE VIEW -->
+<div id="profileView" style="display:none">
+  <div class="profile-wrap">
+    <div class="apps-toolbar" style="margin-bottom:1.2rem">
+      <div>
+        <h2 class="apps-title">Profil</h2>
+        <p class="apps-sub">Berufserfahrung, Ausbildung, Skills und Projekte für deinen Lebenslauf.</p>
+      </div>
+    </div>
+    <div class="profile-section">
+      <div class="collapsible-header" onclick="toggleSection('experience')">
+        <span class="slabel" style="margin-bottom:0">Berufserfahrung</span>
+        <span class="chevron open" id="chevron-experience">▼</span>
+      </div>
+      <div class="collapsible-body open" id="body-experience">
+        <div id="experienceList"></div>
+        <button class="add-proj-btn" onclick="openEntryModal('experience')">+ Stelle hinzufügen</button>
+      </div>
+    </div>
+
+    <div class="profile-section">
+      <div class="collapsible-header" onclick="toggleSection('education')">
+        <span class="slabel" style="margin-bottom:0">Ausbildung</span>
+        <span class="chevron open" id="chevron-education">▼</span>
+      </div>
+      <div class="collapsible-body open" id="body-education">
+        <div id="educationList"></div>
+        <button class="add-proj-btn" onclick="openEntryModal('education')">+ Eintrag hinzufügen</button>
+      </div>
+    </div>
+
+    <div class="profile-section">
+      <div class="collapsible-header" onclick="toggleSection('skills')">
+        <span class="slabel" style="margin-bottom:0">Skills & Sprachen</span>
+        <span class="chevron open" id="chevron-skills">▼</span>
+      </div>
+      <div class="collapsible-body open" id="body-skills">
+        <label style="font-size:0.72rem;margin-bottom:0.2rem">Hard Skills</label>
+        <div class="skill-add-row">
+          <input type="text" id="hardSkillInput" placeholder="z.B. React, SQL, Figma" onkeydown="if(event.key==='Enter'){event.preventDefault();addSkill('hard_skills');}"/>
+          <button class="skill-add-btn" onclick="addSkill('hard_skills')">+</button>
+        </div>
+        <div class="skill-tags" id="hardSkillsList"></div>
+        <label style="font-size:0.72rem;margin-bottom:0.2rem">Soft Skills</label>
+        <div class="skill-add-row">
+          <input type="text" id="softSkillInput" placeholder="z.B. Teamfähigkeit, Ownership" onkeydown="if(event.key==='Enter'){event.preventDefault();addSkill('soft_skills');}"/>
+          <button class="skill-add-btn" onclick="addSkill('soft_skills')">+</button>
+        </div>
+        <div class="skill-tags" id="softSkillsList"></div>
+        <label style="font-size:0.72rem;margin-bottom:0.2rem">Sprachen</label>
+        <div class="skill-add-row">
+          <input type="text" id="languageInput" placeholder="Sprache (z.B. Englisch)"/>
+          <input type="text" id="languageLevelInput" placeholder="Level (z.B. C1)" onkeydown="if(event.key==='Enter'){event.preventDefault();addLanguage();}"/>
+          <button class="skill-add-btn" onclick="addLanguage()">+</button>
+        </div>
+        <div class="skill-tags" id="languagesList"></div>
+      </div>
+    </div>
+
+    <div class="profile-section">
+      <div class="collapsible-header" onclick="toggleSection('projects')">
+        <span class="slabel" style="margin-bottom:0">Projekte verwalten</span>
+        <span class="chevron open" id="chevron-projects">▼</span>
+      </div>
+      <div class="collapsible-body open" id="body-projects">
+        <div id="projectsList"></div>
+        <button class="add-proj-btn" onclick="openAddModal()">+ Neues Projekt</button>
+        <button class="add-proj-btn solid" onclick="openProjectListModal()">📄 Projektliste erstellen</button>
+      </div>
+    </div>
+
+    <div class="profile-section">
+      <div class="collapsible-header" onclick="toggleSection('style')">
+        <span class="slabel" style="margin-bottom:0">Schreibstil für Anschreiben</span>
+        <span class="chevron" id="chevron-style">▼</span>
+      </div>
+      <div class="collapsible-body" id="body-style">
+        <p class="style-section-hint">
+          Füge ein Beispiel-Anschreiben ein (Deutsch oder Englisch). Die KI destilliert daraus deinen Stil (Tonfall, Satzbau, Wortwahl) und übernimmt ihn beim Generieren in beiden Sprachen — wörtliche Inhalte werden nicht übernommen.
+        </p>
+        <div class="style-grid">
+          <div class="settings-card">
+            <div class="settings-card-title">✍️ Schreibstil</div>
+            <p class="settings-card-hint">Füge ein bereits geschriebenes Anschreiben (egal welche Sprache) ein und lass die KI deinen Stil destillieren. Die Analyse beschreibt den Stil sprachneutral und wird beim Generieren auf Deutsch wie Englisch angewendet. Du kannst sie anschließend frei bearbeiten.</p>
+            <label class="settings-sublabel">Beispiel-Text</label>
+            <textarea id="styleExample" rows="10" placeholder="Sehr geehrte Damen und Herren, … / Dear Hiring Manager, …" oninput="updateStyleCount()"></textarea>
+            <div class="settings-actions-row">
+              <button class="action-btn primary" id="analyzeStyleBtn" onclick="analyzeStyle()">✨ Stil analysieren</button>
+              <span class="settings-meta"><span id="styleCount">0 Zeichen</span></span>
+            </div>
+            <label class="settings-sublabel">Analysierter Stil <span class="opt">(editierbar — wird beim Generieren verwendet)</span></label>
+            <textarea id="styleAnalysis" rows="9" placeholder="Klicke „Stil analysieren" — oder schreibe direkt eigene Stilrichtlinien rein (z.B. „- kurze, aktive Sätze\n- keine Floskeln\n- direkter Einstieg ohne hiermit-bewerbe-ich-mich")."></textarea>
+          </div>
+        </div>
+        <div class="style-save-row">
+          <span class="settings-status" id="settingsStatus"></span>
+          <button class="apps-add-btn" id="settingsSaveBtn" onclick="saveSettings()">Stil speichern</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+

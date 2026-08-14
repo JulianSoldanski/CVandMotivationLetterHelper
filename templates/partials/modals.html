@@ -1,0 +1,329 @@
+<!-- APPLICATION MODAL -->
+<div class="modal-overlay" id="appModalOverlay" onclick="closeAppModalOnBackdrop(event)">
+  <div class="modal" style="width:520px">
+    <h3 id="appModalTitle">Bewerbung hinzufügen</h3>
+    <input type="hidden" id="appModalId"/>
+    <div class="row2">
+      <div class="form-group">
+        <label>Unternehmen *</label>
+        <input type="text" id="appModalCompany" placeholder="z.B. SAP SE"/>
+      </div>
+      <div class="form-group">
+        <label>Position *</label>
+        <input type="text" id="appModalPosition" placeholder="z.B. Product Manager"/>
+      </div>
+    </div>
+    <div class="row2">
+      <div class="form-group">
+        <label>Aktueller Status</label>
+        <select id="appModalStage" onchange="onAppModalStageChange()">
+          <option value="documents_created">Erstellt</option>
+          <option value="application_sent">Versendet</option>
+          <option value="interview_1">1. Gespräch</option>
+          <option value="interview_2">2. Gespräch</option>
+          <option value="interview_3">3. Gespräch</option>
+          <option value="rejected">Abgesagt</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Bewerbungsdatum <span class="opt">(opt.)</span></label>
+        <input type="date" id="appModalAppliedAt" style="color:#2c3e50"/>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Link zur Stellenausschreibung <span class="opt">(opt.)</span></label>
+      <input type="url" id="appModalJobUrl" placeholder="https://www.stepstone.de/job/..."/>
+    </div>
+    <div class="form-group">
+      <label>Stellenausschreibung (Text) <span class="opt">(wird beim Generieren gespeichert)</span></label>
+      <textarea id="appModalJobPosting" rows="5" placeholder="Text der Ausschreibung…"></textarea>
+    </div>
+    <div class="form-group" id="appModalRejectedWrap" style="display:none">
+      <label>Abgesagt am <span class="opt">(Datum der Absage)</span></label>
+      <input type="date" id="appModalRejectedAt" style="color:#2c3e50"/>
+    </div>
+    <div class="form-group">
+      <label>Feedback / Notizen <span class="opt">(opt.)</span></label>
+      <textarea id="appModalFeedback" rows="4" placeholder="z.B. Recruiter-Gespräch am 22.05., positiv…"></textarea>
+    </div>
+
+    <div class="form-group">
+      <label>CV als PDF anhängen <span class="opt">(opt. — speichert Skills, Projekte &amp; Text dieser Bewerbung)</span></label>
+      <div class="pdf-drop" id="appModalPdfDrop">
+        <input type="file" id="appModalPdfFile" accept=".pdf,application/pdf" style="display:none" onchange="onPdfPicked(event)"/>
+        <div class="pdf-drop-idle" id="appModalPdfIdle">
+          <span class="pdf-drop-icon">📎</span>
+          <span><strong>PDF auswählen</strong> oder hierher ziehen</span>
+          <button type="button" class="pdf-drop-btn" onclick="document.getElementById('appModalPdfFile').click()">Datei wählen</button>
+        </div>
+        <div class="pdf-drop-loading" id="appModalPdfLoading" style="display:none">
+          <span class="pdf-drop-icon">⏳</span>
+          <span>Analysiere PDF mit Gemini…</span>
+        </div>
+        <div class="pdf-drop-result" id="appModalPdfResult" style="display:none">
+          <div class="pdf-drop-row">
+            <span class="pdf-drop-icon">✅</span>
+            <div>
+              <div><strong id="appModalPdfFileName"></strong></div>
+              <div class="pdf-drop-summary" id="appModalPdfSummary"></div>
+            </div>
+            <button type="button" class="pdf-drop-clear" onclick="clearPdfSelection()" title="PDF entfernen">×</button>
+          </div>
+        </div>
+        <div class="pdf-drop-error" id="appModalPdfError" style="display:none"></div>
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeApplicationModal()">Abbrechen</button>
+      <button class="btn-save" onclick="saveApplicationFromModal()">Speichern</button>
+    </div>
+  </div>
+</div>
+
+<!-- ENTRY MODAL (experience / education) -->
+<div class="modal-overlay" id="entryModalOverlay" onclick="closeEntryModalOnBackdrop(event)">
+  <div class="modal" style="width:520px">
+    <h3 id="entryModalTitle">Stelle hinzufügen</h3>
+    <input type="hidden" id="entrySection"/>
+    <input type="hidden" id="entryId"/>
+
+    <!-- experience fields -->
+    <div id="expFields">
+      <div class="row2">
+        <div class="form-group">
+          <label>Berufsbezeichnung *</label>
+          <input type="text" id="entryTitle" placeholder="z.B. Werkstudent – Product Management"/>
+        </div>
+        <div class="form-group">
+          <label>Unternehmen *</label>
+          <input type="text" id="entryCompany" placeholder="z.B. SAP SE"/>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Ort <span class="opt">(opt.)</span></label>
+        <input type="text" id="entryLocation" placeholder="z.B. Berlin"/>
+      </div>
+    </div>
+
+    <!-- education fields -->
+    <div id="eduFields" style="display:none">
+      <div class="form-group">
+        <label>Abschluss / Bezeichnung *</label>
+        <input type="text" id="entryDegree" placeholder="z.B. M.Sc. Wirtschaftsinformatik"/>
+      </div>
+      <div class="form-group">
+        <label>Institution *</label>
+        <input type="text" id="entryInstitution" placeholder="z.B. HTW Berlin"/>
+      </div>
+      <div class="form-group">
+        <label>Ort <span class="opt">(opt.)</span></label>
+        <input type="text" id="entryEduLocation" placeholder="z.B. Berlin"/>
+      </div>
+    </div>
+
+    <!-- shared date row -->
+    <div class="row2">
+      <div class="form-group">
+        <label>Von (JJJJ-MM)</label>
+        <input type="month" id="entryStart" style="color:#2c3e50"/>
+      </div>
+      <div class="form-group">
+        <label>Bis (JJJJ-MM)</label>
+        <input type="month" id="entryEnd" style="color:#2c3e50"/>
+      </div>
+    </div>
+    <div class="form-group" style="margin-top:-0.4rem;margin-bottom:0.8rem">
+      <label style="display:flex;align-items:center;gap:0.4rem;cursor:pointer;font-weight:400">
+        <input type="checkbox" id="entryCurrent" onchange="toggleCurrentCheck()"/>
+        Aktuell (läuft noch)
+      </label>
+    </div>
+
+    <!-- bullets / details -->
+    <div class="form-group">
+      <label id="bulletsLabel">Bullet Points</label>
+      <div class="bullets-list" id="bulletsList"></div>
+      <button type="button" class="add-bullet-btn" onclick="addBulletRow('')">+ Punkt hinzufügen</button>
+    </div>
+
+    <div class="form-group">
+      <label>Sichtbar im CV</label>
+      <select id="entryVisible">
+        <option value="true">Ja</option>
+        <option value="false">Nein</option>
+      </select>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeEntryModal()">Abbrechen</button>
+      <button class="btn-save" onclick="saveEntry()">Speichern</button>
+    </div>
+  </div>
+</div>
+
+<!-- PROJECT MODAL -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModalOnBackdrop(event)">
+  <div class="modal">
+    <h3 id="modalTitle">Projekt hinzufügen</h3>
+    <input type="hidden" id="modalProjectId"/>
+    <div class="form-group">
+      <label>Titel *</label>
+      <input type="text" id="modalProjTitle" placeholder="z.B. Hackathon x NITO (Oslo)"/>
+    </div>
+    <div class="form-group">
+      <label>Beschreibung *</label>
+      <textarea id="modalProjDesc" rows="4" placeholder="Was hast du gemacht? Was war das Ergebnis?"></textarea>
+    </div>
+    <div class="form-group">
+      <label>Tags <span class="opt">(opt.)</span></label>
+      <input type="text" id="modalProjTags" placeholder="react, frontend, data-analysis"/>
+      <div class="tags-hint">Komma-getrennt – hilft dem KI beim Einschätzen der Relevanz</div>
+    </div>
+    <div class="form-group">
+      <label>Note <span class="opt">(opt.)</span></label>
+      <input type="text" id="modalProjGrade" placeholder="z.B. 1.0" style="max-width:110px"/>
+    </div>
+    <div class="form-group">
+      <label>Link <span class="opt">(opt. – z.B. GitHub-Repo, Demo, Publikation)</span></label>
+      <input type="url" id="modalProjLink" placeholder="https://github.com/username/repo"/>
+    </div>
+
+    <!-- Long-form fields — used only by the Projektliste, not by the CV -->
+    <div class="pl-detail-box">
+      <div class="pl-detail-head" onclick="togglePlDetail()">
+        <span class="slabel">📄 Projektliste-Details <span class="opt">(opt.)</span></span>
+        <span class="chevron" id="plDetailChevron">▼</span>
+      </div>
+      <div class="pl-detail-body" id="plDetailBody">
+        <p class="pl-hint">Ausführliche Angaben für die Projektliste — Ausgangslage, Beitrag, Technologien, Ergebnis. Der Lebenslauf nutzt weiterhin nur Titel und Beschreibung.</p>
+        <div style="display:flex;gap:0.5rem;align-items:center;margin-bottom:0.6rem">
+          <button class="pl-draft-btn" id="plDraftBtn" onclick="draftProjectDetail()">✨ Aus Beschreibung entwerfen</button>
+          <span class="pl-hint" style="margin:0">Füllt beide Sprachen — bitte anschließend prüfen.</span>
+        </div>
+        <div class="pl-grid">
+          <div class="form-group">
+            <label>Kunde/Arbeitgeber</label>
+            <input type="text" id="plClient" placeholder="z.B. HTW Berlin"/>
+          </div>
+          <div class="form-group">
+            <label>Zeitraum</label>
+            <input type="text" id="plPeriod" placeholder="z.B. 03/2024 – 07/2024"/>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Teamgröße</label>
+          <input type="text" id="plTeamSize" placeholder="z.B. 4 Personen" style="max-width:180px"/>
+        </div>
+        <div class="form-group">
+          <label>Technologien</label>
+          <input type="text" id="plTech" placeholder="React, DHIS2, TypeScript"/>
+          <div class="tags-hint">Komma-getrennt – leer lassen, um die Tags oben zu nutzen</div>
+        </div>
+
+        <div class="pl-lang-tabs">
+          <button class="pl-lang-tab active" id="plTabDe" onclick="switchPlLang('de')">Deutsch</button>
+          <button class="pl-lang-tab" id="plTabEn" onclick="switchPlLang('en')">English</button>
+        </div>
+
+        <div class="pl-lang-pane active" id="plPaneDe">
+          <div class="form-group">
+            <label>Titel für die Projektliste <span class="opt">(opt. – sonst Titel oben)</span></label>
+            <input type="text" id="plTitle_de" placeholder="Was es war, nicht der interne Name"/>
+          </div>
+          <div class="form-group">
+            <label>Kurzbeschreibung (Deutsch) <span class="opt">(opt. – für Lebenslauf &amp; Projektliste)</span></label>
+            <textarea id="plSummary_de" rows="2" placeholder="Die Beschreibung von oben auf Deutsch"></textarea>
+            <div class="tags-hint">Leer lassen → wird beim Erzeugen automatisch übersetzt. Eigene Änderungen bleiben erhalten.</div>
+          </div>
+          <div class="form-group">
+            <label>Rolle</label>
+            <input type="text" id="plRole_de" placeholder="z.B. Fullstack-Entwickler"/>
+          </div>
+          <div class="form-group">
+            <label>Ausgangslage</label>
+            <textarea id="plSituation_de" rows="2" placeholder="Ein Satz zum Problem"></textarea>
+          </div>
+          <div class="form-group">
+            <label>Mein Beitrag</label>
+            <textarea id="plContrib_de" rows="3" placeholder="Ein Stichpunkt pro Zeile, aktiv formuliert"></textarea>
+            <div class="tags-hint">Eine Zeile = ein Stichpunkt (2–3 empfohlen)</div>
+          </div>
+          <div class="form-group">
+            <label>Ergebnis</label>
+            <textarea id="plResult_de" rows="2" placeholder="Was sich messbar oder erkennbar geändert hat"></textarea>
+          </div>
+        </div>
+
+        <div class="pl-lang-pane" id="plPaneEn">
+          <div class="form-group">
+            <label>Title for the project list <span class="opt">(opt.)</span></label>
+            <input type="text" id="plTitle_en" placeholder="What it was, not the internal name"/>
+          </div>
+          <div class="form-group">
+            <label>Short description (English) <span class="opt">(opt. – for CV &amp; project list)</span></label>
+            <textarea id="plSummary_en" rows="2" placeholder="The description above, in English"></textarea>
+            <div class="tags-hint">Leave empty → translated automatically on generation. Your own edits are kept.</div>
+          </div>
+          <div class="form-group">
+            <label>Role</label>
+            <input type="text" id="plRole_en" placeholder="e.g. Fullstack Developer"/>
+          </div>
+          <div class="form-group">
+            <label>Starting point</label>
+            <textarea id="plSituation_en" rows="2" placeholder="One sentence on the problem"></textarea>
+          </div>
+          <div class="form-group">
+            <label>My contribution</label>
+            <textarea id="plContrib_en" rows="3" placeholder="One bullet per line, active voice"></textarea>
+            <div class="tags-hint">One line = one bullet (2–3 recommended)</div>
+          </div>
+          <div class="form-group">
+            <label>Outcome</label>
+            <textarea id="plResult_en" rows="2" placeholder="What measurably or visibly changed"></textarea>
+          </div>
+        </div>
+
+        <label class="pl-inline-check">
+          <input type="checkbox" id="plInList" checked/>
+          In Projektliste aufnehmen
+        </label>
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">Abbrechen</button>
+      <button class="btn-save" onclick="saveProject()">Speichern</button>
+    </div>
+  </div>
+</div>
+
+<!-- PROJEKTLISTE MODAL -->
+<div class="modal-overlay" id="plistOverlay" onclick="closePlistOnBackdrop(event)">
+  <div class="modal wide">
+    <h3>📄 Projektliste</h3>
+    <div class="plist-toolbar">
+      <select id="plistLang" onchange="renderProjectList()">
+        <option value="de">Deutsch</option>
+        <option value="en">English</option>
+      </select>
+      <select id="plistLayout" onchange="renderProjectList()">
+        <option value="modern">Modern</option>
+        <option value="classic">Klassisch</option>
+      </select>
+      <button class="pl-draft-btn" onclick="setAllPlistPicks(true)">Alle</button>
+      <button class="pl-draft-btn" onclick="setAllPlistPicks(false)">Keine</button>
+      <span class="pl-hint" style="margin:0;flex:1">Ziel: max. 2 Seiten — 4–6 Projekte reichen meist.</span>
+    </div>
+    <div class="plist-layout">
+      <div class="plist-picker" id="plistPicker"></div>
+      <div class="plist-preview"><iframe id="plistFrame" title="Projektliste-Vorschau"></iframe></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closePlistModal()">Schließen</button>
+      <button class="btn-cancel" onclick="openPlistInNewTab()">Neuer Tab</button>
+      <button class="btn-save" onclick="exportProjectList()">PDF / Drucken</button>
+    </div>
+  </div>
+</div>

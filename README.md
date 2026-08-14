@@ -133,11 +133,14 @@ A few things that aren't obvious from the screenshot:
 
 - **Backend**: Flask · Python 3.11+ · `google-genai` SDK · BeautifulSoup
   (job-posting scraping) · stdlib `sqlite3`.
-- **Frontend**: vanilla HTML/CSS/JS — no build step, no framework. Single
-  `templates/index.html` (~2000 lines including styles + script).
-- **AI**: Google Gemini (default `gemini-2.5-flash`). Multiple structured
-  prompts: CV generation, Anschreiben generation, job summary, field
-  extraction, style analysis, chat.
+- **Frontend**: vanilla HTML/CSS/JS — no build step, no framework.
+  `templates/index.html` is a thin shell that includes `templates/partials/*`
+  and loads `static/css/app.css` plus `static/js/*.js`. The scripts are
+  deliberately classic (not ES modules): the markup wires its handlers with
+  inline `onclick=`, which needs the functions in global scope.
+- **AI**: Google Gemini. Structured prompts for CV generation, Anschreiben
+  generation, job summary, field extraction, style analysis, PDF import and
+  project drafting.
 - **Storage**:
   - `data/cvcreater.db` — applications + stage_events
   - `data/profile.json`, `data/projects.json`, `data/settings.json` — config
@@ -164,13 +167,14 @@ A few things that aren't obvious from the screenshot:
 │  └────────┘ └──────┘ └──────┘ └──────────┘ └────────────┘    │
 └────────────────────────────┬─────────────────────────────────┘
                              │ /generate, /applications, /queue,
-                             │ /settings, /analyze-style, /chat …
+                             │ /settings, /analyze-style …
 ┌────────────────────────────▼─────────────────────────────────┐
-│ Flask app.py                                                 │
-│  - Routes + request validation                               │
-│  - call_gemini / _call_gemini_json helpers                   │
-│  - Prompt builders for CV, Anschreiben, summary, analysis    │
-│  - /queue/install (bookmarklet drag-and-drop page)           │
+│ Flask — app.py wires six blueprints                          │
+│  routes_generator · routes_profile   · routes_projects       │
+│  routes_settings  · routes_applications · routes_queue       │
+│    ↓ backed by                                               │
+│  generate.py (prompts) · render.py (HTML) · store.py (JSON)  │
+│  tracker.py (logging)  · gemini.py (the one Gemini call)     │
 └────┬──────────────────────────────────────────┬──────────────┘
      │                                          │
      ▼                                          ▼
@@ -297,11 +301,25 @@ is set, so the two modes don't fight each other.
 
 ```
 CVCreater/
-├── app.py                    # Flask routes, prompt builders, generation
+├── app.py                    # Flask app + blueprint registration (~40 lines)
+├── config.py                 # Paths, limits, demo-workspace bootstrap
+├── gemini.py                 # The single Gemini call site
+├── store.py                  # profile/projects/settings JSON + prompt text
+├── tracker.py                # Application logging
+├── generate.py               # Prompt builders (CV, Anschreiben, summary)
+├── render.py                 # CV / Anschreiben / Projektliste HTML
+├── util.py                   # Date + URL helpers
+├── routes_*.py               # One blueprint per view
 ├── db.py                     # SQLite DAL (applications + stage_events)
 ├── cv_layouts.py             # CV layout templates (Modern / Sidebar / Classic)
 ├── personal_config.py        # Contact loader (cv_personal.json)
-├── templates/index.html      # Entire frontend (HTML + CSS + JS)
+├── templates/
+│   ├── index.html            # Shell: includes partials, loads static assets
+│   └── partials/             # Markup per view
+├── static/
+│   ├── css/app.css
+│   └── js/                   # Classic scripts (NOT modules — inline handlers)
+├── tests/test_smoke.py       # python3 -m unittest discover -s tests
 ├── data/                     # Live data (gitignored)
 │   ├── cvcreater.db
 │   ├── profile.json

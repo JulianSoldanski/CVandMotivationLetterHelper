@@ -1,0 +1,266 @@
+  <!-- LEFT PANEL -->
+  <div class="left-panel">
+    <div class="panel-inner">
+
+      <!-- Job posting: text or URL -->
+      <span class="slabel">Stellenausschreibung</span>
+      <div class="input-mode">
+        <button class="mode-btn active" data-mode="text" onclick="switchInputMode('text', this)">Text einfügen</button>
+        <button class="mode-btn" data-mode="url" onclick="switchInputMode('url', this)">URL laden</button>
+      </div>
+
+      <div id="textMode" class="form-group">
+        <textarea id="job_posting" rows="7" placeholder="Vollständige Stellenausschreibung einfügen… (Ctrl+Enter zum Generieren)"></textarea>
+      </div>
+
+      <div id="urlMode" class="form-group" style="display:none">
+        <div class="url-row">
+          <input type="text" id="job_url" placeholder="https://www.stepstone.de/job/..." />
+          <button class="fetch-btn" id="fetchBtn" onclick="fetchJobUrl()">Laden</button>
+        </div>
+        <div style="margin-top:0.4rem">
+          <textarea id="job_posting_url" rows="5" placeholder="Text wird hier geladen…" readonly style="font-size:0.78rem;color:#888;background:#f8f8f8"></textarea>
+        </div>
+      </div>
+
+      <div class="job-overview" id="jobOverview" style="display:none">
+        <hr class="div">
+        <span class="slabel">Stellen-Übersicht</span>
+        <div class="stelle-summary">
+          <div class="stelle-card">
+            <div class="stelle-card-title">🏢 Was sie machen</div>
+            <div class="stelle-card-body" id="stelleDoes"></div>
+          </div>
+          <div class="stelle-card">
+            <div class="stelle-card-title">🎯 Was sie suchen</div>
+            <ul class="stelle-list" id="stelleWants"></ul>
+          </div>
+          <div class="stelle-card">
+            <div class="stelle-card-title">⚙️ Technologien</div>
+            <div class="stelle-tech" id="stelleTech"></div>
+          </div>
+        </div>
+        <details class="stelle-source-details">
+          <summary>Originaltext anzeigen</summary>
+          <pre class="stelle-source-body" id="stelleSource"></pre>
+        </details>
+      </div>
+
+      <hr class="div">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.55rem">
+        <span class="slabel" style="margin-bottom:0">Angaben</span>
+        <button class="fetch-btn" id="autoFillBtn" onclick="autoFillFields()" style="font-size:0.74rem;padding:0.28rem 0.7rem;background:#6c757d">✨ Auto-Ausfüllen</button>
+      </div>
+
+      <div class="row2">
+        <div class="form-group">
+          <label>Unternehmen <span class="opt">(opt.)</span></label>
+          <input type="text" id="company" placeholder="z.B. SAP SE"/>
+        </div>
+        <div class="form-group">
+          <label>Position <span class="opt">(opt.)</span></label>
+          <input type="text" id="position" placeholder="z.B. Product Manager"/>
+        </div>
+      </div>
+      <div class="row2">
+        <div class="form-group">
+          <label>Anrede <span class="opt">(opt.)</span></label>
+          <input type="text" id="contact" placeholder="Sehr geehrte Damen und Herren"/>
+        </div>
+        <div class="form-group">
+          <label>Ort</label>
+          <input type="text" id="city" placeholder="Berlin"/>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Firmenadresse <span class="opt">(opt. · für Anschreiben)</span></label>
+        <textarea id="company_address" rows="2" placeholder="z.B. Musterstraße 1&#10;10115 Berlin"></textarea>
+      </div>
+      <div class="form-group">
+        <label>Sprache</label>
+        <select id="language">
+          <option value="de">Deutsch</option>
+          <option value="en">English</option>
+        </select>
+      </div>
+
+      <hr class="div">
+      <span class="slabel">Layout (CV)</span>
+      <div class="layout-cards" id="layoutCards">
+        <div class="layout-card active" data-layout="modern" onclick="selectLayout(this)">
+          <div class="lc-preview">
+            <div class="preview-modern">
+              <div class="row header"></div>
+              <div class="row"></div>
+              <div class="row short"></div>
+              <div class="row"></div>
+              <div class="row short"></div>
+              <div class="row"></div>
+            </div>
+          </div>
+          <div class="lc-name">Modern</div>
+        </div>
+        <div class="layout-card" data-layout="sidebar" onclick="selectLayout(this)">
+          <div class="lc-preview">
+            <div class="preview-sidebar">
+              <div class="col-left"></div>
+              <div class="col-right">
+                <div class="row"></div>
+                <div class="row short"></div>
+                <div class="row"></div>
+                <div class="row short"></div>
+                <div class="row"></div>
+              </div>
+            </div>
+          </div>
+          <div class="lc-name">Sidebar</div>
+        </div>
+        <div class="layout-card" data-layout="classic" onclick="selectLayout(this)">
+          <div class="lc-preview">
+            <div class="preview-classic">
+              <div class="row header"></div>
+              <div class="row divider"></div>
+              <div class="row"></div>
+              <div class="row short"></div>
+              <div class="row divider"></div>
+              <div class="row"></div>
+              <div class="row short"></div>
+            </div>
+          </div>
+          <div class="lc-name">Klassisch</div>
+        </div>
+      </div>
+      <hr class="div">
+      <span class="slabel">Eigene Hinweise</span>
+      <div class="form-group">
+        <textarea id="custom_notes" rows="3" placeholder="z.B. Betone React-Erfahrung besonders. Erwähne KI-Interesse. Python ist hier wichtig."></textarea>
+      </div>
+
+      <hr class="div">
+
+      <span class="slabel">Generieren</span>
+      <div class="doc-type-group">
+        <div class="doc-btn active" data-value="both" onclick="selectDocType(this)">Beide</div>
+        <div class="doc-btn" data-value="cv" onclick="selectDocType(this)">Nur CV</div>
+        <div class="doc-btn" data-value="anschreiben" onclick="selectDocType(this)">Nur Anschreiben</div>
+      </div>
+      <button class="generate-btn" id="generateBtn" onclick="generate()">
+        <span id="btnText">Generieren</span>
+        <div class="spinner" id="spinner"></div>
+      </button>
+      <div class="error-msg" id="errorMsg"></div>
+
+    </div>
+  </div>
+
+  <!-- RIGHT PANEL -->
+  <div class="right-panel">
+    <div class="tabs">
+      <div class="tab active" id="tab-edit" onclick="switchTab('edit')">
+        ✏️ Bearbeiten <span class="badge" id="badge-edit">–</span>
+      </div>
+      <div class="tab" id="tab-cv" onclick="switchTab('cv')">
+        Lebenslauf <span class="badge" id="badge-cv">–</span>
+      </div>
+      <div class="tab" id="tab-anschreiben" onclick="switchTab('anschreiben')">
+        Anschreiben <span class="badge" id="badge-anschreiben">–</span>
+      </div>
+      <div class="tab-actions" id="docActions" style="display:none">
+        <button class="action-btn" id="copyHtmlBtn" onclick="copyHtml()">HTML kopieren</button>
+        <button class="action-btn" onclick="exportPdf()">Als PDF speichern</button>
+        <button class="action-btn primary" onclick="openInNewTab()">Neues Fenster</button>
+      </div>
+    </div>
+    <div class="preview-area">
+
+      <!-- EDITOR TAB -->
+      <div class="tab-content active" id="content-edit">
+        <div class="empty-state" id="empty-edit">
+          <svg width="52" height="52" viewBox="0 0 52 52" fill="none">
+            <rect x="8" y="4" width="36" height="44" rx="4" stroke="#ddd" stroke-width="2"/>
+            <rect x="15" y="15" width="22" height="2" rx="1" fill="#ddd"/>
+            <rect x="15" y="21" width="16" height="2" rx="1" fill="#ddd"/>
+            <rect x="15" y="27" width="20" height="2" rx="1" fill="#ddd"/>
+            <rect x="15" y="33" width="14" height="2" rx="1" fill="#ddd"/>
+          </svg>
+          <p>Generiere zuerst — dann kannst du den Inhalt hier bearbeiten</p>
+        </div>
+        <div class="editor-wrap" id="editorWrap" style="display:none">
+          <!-- CV editor -->
+          <div id="cvEditor" style="display:none">
+            <div class="editor-section">
+              <div class="editor-section-title">Profil-Statement</div>
+              <textarea id="edProfile" rows="3"></textarea>
+            </div>
+            <div class="editor-section" id="edExpSection">
+              <div class="editor-section-title">Berufserfahrung</div>
+              <div id="edExpList"></div>
+            </div>
+            <div class="editor-section" id="edEduSection">
+              <div class="editor-section-title">Ausbildung</div>
+              <div id="edEduList"></div>
+            </div>
+            <div class="editor-section">
+              <div class="editor-section-title">Projekte &amp; Erfolge</div>
+              <div id="edProjectsList" style="display:flex;flex-direction:column;gap:0.3rem;margin-bottom:0.5rem"></div>
+              <select id="edProjectsAdd" style="width:100%;font-size:0.82rem;padding:0.38rem 0.55rem;border:1.5px dashed #ccc;border-radius:6px;background:#fafafa;color:#888;cursor:pointer" onchange="addProjectToEditor(this)">
+                <option value="">+ Projekt hinzufügen…</option>
+              </select>
+            </div>
+            <div class="editor-section">
+              <div class="editor-section-title">Skills</div>
+              <div class="editor-skills-grid" id="edSkillsList"></div>
+            </div>
+            <button class="render-btn" id="renderCvBtn" onclick="renderPreview('cv')">
+              <span>Vorschau erstellen →</span>
+            </button>
+          </div>
+          <!-- Anschreiben editor -->
+          <div id="anschreibenEditor" style="display:none">
+            <div class="editor-section">
+              <div class="editor-section-title">Betreff</div>
+              <textarea id="edSubject" rows="2"></textarea>
+            </div>
+            <div class="editor-section">
+              <div class="editor-section-title">Absätze</div>
+              <div id="edParaList"></div>
+            </div>
+            <button class="render-btn" id="renderAnBtn" onclick="renderPreview('anschreiben')">
+              <span>Vorschau erstellen →</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- CV PREVIEW TAB -->
+      <div class="tab-content" id="content-cv">
+        <div class="empty-state" id="empty-cv">
+          <svg width="52" height="52" viewBox="0 0 52 52" fill="none">
+            <rect x="8" y="4" width="36" height="44" rx="4" stroke="#ddd" stroke-width="2"/>
+            <rect x="15" y="15" width="22" height="2" rx="1" fill="#ddd"/>
+            <rect x="15" y="21" width="16" height="2" rx="1" fill="#ddd"/>
+            <rect x="15" y="27" width="20" height="2" rx="1" fill="#ddd"/>
+            <rect x="15" y="33" width="14" height="2" rx="1" fill="#ddd"/>
+          </svg>
+          <p>Klicke „Vorschau erstellen" im Bearbeiten-Tab</p>
+        </div>
+        <iframe id="iframe-cv" style="display:none"></iframe>
+      </div>
+
+      <!-- ANSCHREIBEN PREVIEW TAB -->
+      <div class="tab-content" id="content-anschreiben">
+        <div class="empty-state" id="empty-anschreiben">
+          <svg width="52" height="52" viewBox="0 0 52 52" fill="none">
+            <rect x="8" y="4" width="36" height="44" rx="4" stroke="#ddd" stroke-width="2"/>
+            <rect x="15" y="15" width="22" height="2" rx="1" fill="#ddd"/>
+            <rect x="15" y="21" width="16" height="2" rx="1" fill="#ddd"/>
+            <rect x="15" y="27" width="20" height="2" rx="1" fill="#ddd"/>
+          </svg>
+          <p>Klicke „Vorschau erstellen" im Bearbeiten-Tab</p>
+        </div>
+        <iframe id="iframe-anschreiben" style="display:none"></iframe>
+      </div>
+    </div>
+  </div>
+</div>
+

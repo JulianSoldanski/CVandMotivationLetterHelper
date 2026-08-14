@@ -1,0 +1,21 @@
+<header>
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+    <rect width="24" height="24" rx="5" fill="#4B5D67"/>
+    <rect x="4" y="5" width="16" height="2" rx="1" fill="white"/>
+    <rect x="4" y="10" width="12" height="2" rx="1" fill="white"/>
+    <rect x="4" y="15" width="14" height="2" rx="1" fill="white"/>
+  </svg>
+  <h1>CV & Anschreiben Generator</h1>
+  <span>Gemini Flash</span>
+  <span id="demoBadge" class="demo-badge" style="display:none" title="DEMO_MODE=1 — alle Edits landen in data/.demo/ und werden nie committed">DEMO</span>
+  <nav class="view-nav">
+    <button class="view-btn active" id="navGenerator" onclick="showView('generator')">Generator</button>
+    <button class="view-btn" id="navQueue" onclick="showView('queue')">Queue <span class="view-badge" id="queueCountBadge">0</span></button>
+    <button class="view-btn" id="navProfile" onclick="showView('profile')">Profil</button>
+    <button class="view-btn" id="navApplications" onclick="showView('applications')">Bewerbungen <span class="view-badge" id="appsCountBadge">0</span></button>
+    <button class="view-btn" id="navStats" onclick="showView('stats')">Statistik</button>
+  </nav>
+</header>
+
+<div class="main-layout" id="generatorView">
+

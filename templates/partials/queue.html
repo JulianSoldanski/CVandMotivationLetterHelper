@@ -1,0 +1,26 @@
+<!-- QUEUE VIEW -->
+<div id="queueView" style="display:none">
+  <div class="apps-wrap">
+    <div class="apps-toolbar">
+      <div>
+        <h2 class="apps-title">Queue</h2>
+        <p class="apps-sub" id="queueSub">Lade Queue…</p>
+      </div>
+      <a class="apps-add-btn" href="/queue/install" target="_blank" style="text-decoration:none;display:inline-block">⚡ Bookmarklet einrichten</a>
+    </div>
+
+    <div class="queue-add-row">
+      <input type="url" id="queueAddUrl" placeholder="https://www.stepstone.de/job/… (URL einfügen + Enter)"/>
+      <input type="text" id="queueAddNote" placeholder="Notiz (opt.)" maxlength="200"/>
+      <button class="apps-add-btn" onclick="addQueueFromInput()">Hinzufügen</button>
+    </div>
+
+    <div class="queue-list" id="queueList"></div>
+
+    <details class="queue-archive" id="queueArchive" style="display:none">
+      <summary>Erledigt &amp; übersprungen</summary>
+      <div class="queue-archive-body" id="queueArchiveList"></div>
+    </details>
+  </div>
+</div>
+
