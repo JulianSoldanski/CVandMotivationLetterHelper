@@ -3,6 +3,7 @@
 Keeps the same dict shape the routes and frontend already expect, so the
 HTTP boundary stays untouched.
 """
+import json
 import os
 import sqlite3
 from contextlib import contextmanager
@@ -41,8 +42,6 @@ def init_schema():
                 job_url             TEXT NOT NULL DEFAULT '',
                 cv_content          TEXT,        -- JSON snapshot of the generated CV (or NULL)
                 anschreiben_content TEXT,        -- JSON snapshot of the generated Anschreiben (or NULL)
-                company_info        TEXT,        -- JSON: description, industry, employees, founded, hq, sources, …
-                fit_score           TEXT,        -- JSON: {score, summary, strengths[], gaps[]}
                 layout_used         TEXT,
                 language            TEXT,
                 created_at          TEXT NOT NULL,
@@ -65,10 +64,6 @@ def init_schema():
                 status         TEXT NOT NULL DEFAULT 'pending',
                 added_at       TEXT NOT NULL,
                 processed_at   TEXT,
-                error          TEXT,
-                fit_score      TEXT,            -- JSON: {score, summary, strengths[], gaps[]}
-                company_info   TEXT,            -- JSON: description, industry, employees, kununu, …
-                enriched_at    TEXT,            -- ISO datetime: when background enrichment finished
                 application_id TEXT REFERENCES applications(id) ON DELETE SET NULL
             );
 
@@ -79,6 +74,11 @@ def init_schema():
         """)
         # Lightweight forward-migration for users who already ran an earlier
         # init_schema before the snapshot columns existed.
+        #
+        # Databases written before the AI-enrichment features were removed also
+        # carry company_info / fit_score / enriched_at / error columns. They are
+        # deliberately left in place rather than dropped: nothing reads them, and
+        # an unused column is cheaper than a destructive table rebuild.
         existing_cols = {r["name"] for r in conn.execute("PRAGMA table_info(applications)")}
         for col, decl in [
             ("cv_content",          "TEXT"),
@@ -86,28 +86,13 @@ def init_schema():
             ("layout_used",         "TEXT"),
             ("language",            "TEXT"),
             ("job_url",             "TEXT NOT NULL DEFAULT ''"),
-            ("company_info",        "TEXT"),
-            ("fit_score",           "TEXT"),
             ("research_seconds",    "INTEGER NOT NULL DEFAULT 0"),
         ]:
             if col not in existing_cols:
                 conn.execute(f"ALTER TABLE applications ADD COLUMN {col} {decl}")
 
-        existing_queue_cols = {r["name"] for r in conn.execute("PRAGMA table_info(job_queue)")}
-        if "fit_score" not in existing_queue_cols:
-            conn.execute("ALTER TABLE job_queue ADD COLUMN fit_score TEXT")
-        if "company_info" not in existing_queue_cols:
-            conn.execute("ALTER TABLE job_queue ADD COLUMN company_info TEXT")
-        if "enriched_at" not in existing_queue_cols:
-            conn.execute("ALTER TABLE job_queue ADD COLUMN enriched_at TEXT")
-            # Backfill: anything created before this column existed is
-            # considered enrichment-finished (success or no-op), so the
-            # frontend doesn't loop polling on legacy rows.
-            conn.execute("UPDATE job_queue SET enriched_at = added_at WHERE enriched_at IS NULL")
-
 
 def _row_to_dict(row: sqlite3.Row, history: list[dict]) -> dict:
-    import json
     def _parse(val):
         if not val:
             return None
@@ -128,8 +113,6 @@ def _row_to_dict(row: sqlite3.Row, history: list[dict]) -> dict:
         "job_url":             row["job_url"] if "job_url" in keys else "",
         "cv_content":          _parse(row["cv_content"]),
         "anschreiben_content": _parse(row["anschreiben_content"]),
-        "company_info":        _parse(row["company_info"]) if "company_info" in keys else None,
-        "fit_score":           _parse(row["fit_score"])    if "fit_score"    in keys else None,
         "layout_used":         row["layout_used"],
         "language":            row["language"],
         "created_at":          row["created_at"],
@@ -179,7 +162,6 @@ def find_application_by_company_position(company: str, position: str) -> dict | 
 
 def upsert_application(entry: dict):
     """INSERT or UPDATE the applications row. Does NOT touch stage_events."""
-    import json
     def _serialize(val):
         if val is None:
             return None
@@ -189,9 +171,9 @@ def upsert_application(entry: dict):
             """INSERT INTO applications
                  (id, company, position, current_stage, feedback, applied_at,
                   job_posting, job_url, cv_content, anschreiben_content,
-                  company_info, fit_score, layout_used, language,
+                  layout_used, language,
                   created_at, updated_at, research_seconds)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                ON CONFLICT(id) DO UPDATE SET
                  company             = excluded.company,
                  position            = excluded.position,
@@ -202,8 +184,6 @@ def upsert_application(entry: dict):
                  job_url             = excluded.job_url,
                  cv_content          = COALESCE(excluded.cv_content,          applications.cv_content),
                  anschreiben_content = COALESCE(excluded.anschreiben_content, applications.anschreiben_content),
-                 company_info        = COALESCE(excluded.company_info,        applications.company_info),
-                 fit_score           = COALESCE(excluded.fit_score,           applications.fit_score),
                  layout_used         = COALESCE(excluded.layout_used,         applications.layout_used),
                  language            = COALESCE(excluded.language,            applications.language),
                  updated_at          = excluded.updated_at,
@@ -219,8 +199,6 @@ def upsert_application(entry: dict):
                 entry.get("job_url", ""),
                 _serialize(entry.get("cv_content")),
                 _serialize(entry.get("anschreiben_content")),
-                _serialize(entry.get("company_info")),
-                _serialize(entry.get("fit_score")),
                 entry.get("layout_used"),
                 entry.get("language"),
                 entry["created_at"],
@@ -277,14 +255,6 @@ QUEUE_STATUSES = ("pending", "processing", "done", "failed", "skipped")
 
 
 def _queue_row_to_dict(row: sqlite3.Row) -> dict:
-    import json
-    def _parse_col(name):
-        if name in row.keys() and row[name]:
-            try:
-                return json.loads(row[name])
-            except (TypeError, ValueError):
-                return None
-        return None
     return {
         "id":             row["id"],
         "url":            row["url"],
@@ -293,11 +263,7 @@ def _queue_row_to_dict(row: sqlite3.Row) -> dict:
         "status":         row["status"],
         "added_at":       row["added_at"],
         "processed_at":   row["processed_at"],
-        "error":          row["error"],
         "application_id": row["application_id"],
-        "fit_score":      _parse_col("fit_score"),
-        "company_info":   _parse_col("company_info"),
-        "enriched_at":    row["enriched_at"] if "enriched_at" in row.keys() else None,
     }
 
 
@@ -354,20 +320,10 @@ def update_queue_item(
     *,
     status: str | None = None,
     note: str | None = None,
-    error: str | None = None,
     processed_at: str | None = None,
     application_id: str | None = None,
-    fit_score: dict | None = None,
-    company_info: dict | None = None,
-    enriched_at: str | None = None,
 ) -> dict | None:
-    """Partial-update a queue row. Only fields explicitly passed are touched.
-
-    `fit_score=None` / `company_info=None` is the default sentinel for
-    "don't touch"; pass an explicit empty dict `{}` to clear, or a
-    populated dict to set.
-    """
-    import json
+    """Partial-update a queue row. Only fields explicitly passed are touched."""
     sets, vals = [], []
     if status is not None:
         if status not in QUEUE_STATUSES:
@@ -375,20 +331,10 @@ def update_queue_item(
         sets.append("status = ?"); vals.append(status)
     if note is not None:
         sets.append("note = ?"); vals.append(note)
-    if error is not None:
-        sets.append("error = ?"); vals.append(error)
     if processed_at is not None:
         sets.append("processed_at = ?"); vals.append(processed_at)
     if application_id is not None:
         sets.append("application_id = ?"); vals.append(application_id)
-    if fit_score is not None:
-        sets.append("fit_score = ?")
-        vals.append(json.dumps(fit_score, ensure_ascii=False) if fit_score else None)
-    if company_info is not None:
-        sets.append("company_info = ?")
-        vals.append(json.dumps(company_info, ensure_ascii=False) if company_info else None)
-    if enriched_at is not None:
-        sets.append("enriched_at = ?"); vals.append(enriched_at)
     if not sets:
         return get_queue_item(qid)
     vals.append(qid)

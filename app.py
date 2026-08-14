@@ -95,9 +95,6 @@ PROJECT_DETAIL_SHARED = ("client", "period", "team_size")
 # Prose fields inside a localized block; `contributions` is a list, the rest strings.
 PROJECT_LOCALIZED_TEXT = ("title", "summary", "role", "situation", "result", "team_size")
 PROJECT_LOCALIZED_LIST = ("contributions",)
-# Projects per translation request — small enough that the reply can't hit the
-# output token limit, large enough to keep a full list to a couple of calls.
-PROJECT_TRANSLATE_BATCH = 6
 
 
 def normalize_project_detail(raw: dict | None) -> dict:
@@ -125,11 +122,6 @@ def normalize_project_detail(raw: dict | None) -> dict:
         block = raw.get(lang) if isinstance(raw.get(lang), dict) else {}
         loc = {field: _s(block.get(field)) for field in PROJECT_LOCALIZED_TEXT}
         loc.update({field: _list(block.get(field)) for field in PROJECT_LOCALIZED_LIST})
-        # Bookkeeping for the auto-translation: `auto` lists the fields that were
-        # machine-written (only those may be refreshed later), `src` fingerprints
-        # the source text they were derived from.
-        loc["auto"] = [f for f in _list(block.get("auto")) if f in PROJECT_LOCALIZED_TEXT + PROJECT_LOCALIZED_LIST]
-        loc["src"]  = _s(block.get("src"))
         detail[lang] = loc
     return detail
 
@@ -153,187 +145,6 @@ def project_locale(project: dict, language: str) -> dict:
     """
     detail = normalize_project_detail(project.get("detail"))
     return detail.get(language) or detail["de"]
-
-
-def _project_source_fingerprint(project: dict, detail: dict) -> str:
-    """Fingerprint of the text a translation is derived from.
-
-    Changes when the author edits the project's title, description or team
-    size, which is exactly when a cached machine translation goes stale.
-    """
-    raw = "\x1f".join([
-        project.get("title", "") or "",
-        project.get("description", "") or "",
-        detail.get("team_size", "") or "",
-    ])
-    return hashlib.sha1(raw.encode("utf-8")).hexdigest()[:12]
-
-
-def _project_needs_translation(project: dict, detail: dict, language: str) -> bool:
-    """True if printing this project in `language` would fall back to source text.
-
-    Also true when the source text changed since the cached translation was
-    made — otherwise an edited description keeps showing its stale translation.
-    """
-    loc   = detail[language]
-    other = detail["en" if language == "de" else "de"]
-
-    # Once a block has been machine-filled, the fingerprint alone decides: same
-    # source text means nothing to do (so a field the model happened to drop
-    # isn't retried on every single render), changed source means redo it.
-    if loc["src"]:
-        return loc["src"] != _project_source_fingerprint(project, detail)
-    if project.get("title") and not loc["title"]:
-        return True
-    if project.get("description") and not loc["summary"]:
-        return True
-    if detail["team_size"] and not loc["team_size"]:
-        return True
-    # Long-form content drafted in one language only.
-    if any(other[field] and not loc[field] for field in ("role", "situation", "result", "contributions")):
-        return True
-    return False
-
-
-def _translate_project_blocks(pending: list, language: str) -> dict:
-    """Translate every pending project into `language` in a single Gemini call.
-
-    Source material is each project's own text plus whatever was already
-    drafted in the other language, so a project with a full long-form German
-    entry comes back as a full English one instead of a bare title.
-
-    Returns {project_id: localized_block}.
-    """
-    target = "German" if language == "de" else "English"
-    other  = "en" if language == "de" else "de"
-
-    items = []
-    for project, detail in pending:
-        src = detail[other]
-        items.append({
-            "id":            project.get("id", ""),
-            "title":         project.get("title", ""),
-            "description":   project.get("description", ""),
-            "team_size":     detail["team_size"],
-            "role":          src["role"],
-            "situation":     src["situation"],
-            "contributions": src["contributions"],
-            "result":        src["result"],
-        })
-
-    prompt = f"""You translate CV project entries. Output language: {target}.
-
-Translate every field of every project below into {target}. Source text may
-already be in {target} — then return it unchanged apart from obvious fixes.
-
-PROJECTS (JSON):
-{json.dumps(items, ensure_ascii=False, indent=1)}
-
-Respond with JSON only, in exactly this structure:
-{{
-  "projects": [
-    {{
-      "id": "the id from the input, unchanged",
-      "title": "project title in {target}",
-      "summary": "the description in {target}, same length and level of detail",
-      "role": "in {target}, or \\"\\" if the input field was empty",
-      "situation": "in {target}, or \\"\\"",
-      "contributions": ["in {target}, same number of bullets, [] if input was empty"],
-      "result": "in {target}, or \\"\\"",
-      "team_size": "in {target} (e.g. \\"4 Personen\\" <-> \\"4 people\\"), or \\"\\""
-    }}
-  ]
-}}
-
-Rules:
-- One object per input project, same ids, nothing invented, nothing dropped.
-- Translate, do not rewrite: keep every fact, number, grade and claim as-is.
-- Keep proper nouns untranslated (companies, universities, product and tool
-  names, technologies like React or Python). Translate degree names, course
-  titles, roles and generic descriptions.
-- An empty input field stays empty in the output — never fill a gap.
-"""
-    result = _call_gemini_json(prompt, 8192)
-    blocks = {}
-    for entry in (result.get("projects") or []):
-        if isinstance(entry, dict) and entry.get("id"):
-            blocks[str(entry["id"])] = entry
-    return blocks
-
-
-def ensure_project_language(projects: list, language: str) -> list:
-    """Guarantee every project can be printed entirely in `language`.
-
-    Missing (or stale) localized text is translated once and cached back into
-    projects.json, so later renders and the project editor reuse it. Only
-    machine-written fields are ever overwritten — anything typed by hand in the
-    editor stays untouched.
-
-    Best-effort by design: without an API key, or when the call fails, the
-    projects come back with their source text and the renderers fall back to it
-    as before. A document is never blocked on a translation.
-    """
-    if language not in PROJECT_DETAIL_LANGS:
-        language = "de"
-    for p in projects:
-        p["detail"] = normalize_project_detail(p.get("detail"))
-
-    pending = [(p, p["detail"]) for p in projects if _project_needs_translation(p, p["detail"], language)]
-    if not pending or not os.environ.get("GEMINI_API_KEY"):
-        return projects
-
-    # Chunked so a long project list can't run into the output token limit and
-    # come back truncated — a half-parsed batch would translate nothing at all.
-    blocks: dict = {}
-    for start in range(0, len(pending), PROJECT_TRANSLATE_BATCH):
-        chunk = pending[start:start + PROJECT_TRANSLATE_BATCH]
-        try:
-            blocks.update(_translate_project_blocks(chunk, language))
-        except Exception as e:
-            print(f"[projects] translation to {language} failed for {len(chunk)} project(s), using source text: {e}")
-
-    changed = False
-    for project, detail in pending:
-        block = blocks.get(str(project.get("id", "")))
-        if not block:
-            continue
-        loc   = detail[language]
-        fresh = normalize_project_detail({language: block})[language]
-        auto  = list(loc["auto"])
-        for field in PROJECT_LOCALIZED_TEXT + PROJECT_LOCALIZED_LIST:
-            # Hand-written text wins: only empty fields and earlier machine
-            # output get replaced.
-            if loc[field] and field not in auto:
-                continue
-            if not fresh[field]:
-                continue
-            loc[field] = fresh[field]
-            if field not in auto:
-                auto.append(field)
-        loc["auto"] = auto
-        loc["src"]  = _project_source_fingerprint(project, detail)
-        changed = True
-
-    if changed:
-        _persist_project_details(projects)
-    return projects
-
-
-def _persist_project_details(projects: list):
-    """Cache the freshly translated blocks without clobbering concurrent edits.
-
-    Only the `detail` of known ids is written back; everything else on disk
-    (including projects added or edited in another tab meanwhile) is kept.
-    """
-    details = {p["id"]: p["detail"] for p in projects if p.get("id")}
-    try:
-        stored = load_projects()
-        for p in stored:
-            if p.get("id") in details:
-                p["detail"] = details[p["id"]]
-        save_projects(stored)
-    except OSError as e:
-        print(f"[projects] could not cache translations: {e}")
 
 
 def load_settings() -> dict:
@@ -447,8 +258,6 @@ def log_application(
     job_url: str = "",
     cv_content: dict | None = None,
     anschreiben_content: dict | None = None,
-    company_info: dict | None = None,
-    fit_score: dict | None = None,
     layout_used: str | None = None,
     language: str | None = None,
     tracked_seconds: int = 0,
@@ -480,10 +289,6 @@ def log_application(
             existing["cv_content"] = cv_content
         if anschreiben_content is not None:
             existing["anschreiben_content"] = anschreiben_content
-        if company_info is not None:
-            existing["company_info"] = company_info
-        if fit_score is not None:
-            existing["fit_score"] = fit_score
         if layout_used:
             existing["layout_used"] = layout_used
         if language:
@@ -504,8 +309,6 @@ def log_application(
         "job_url":             job_url[:JOB_URL_MAX] if job_url else "",
         "cv_content":          cv_content,
         "anschreiben_content": anschreiben_content,
-        "company_info":        company_info,
-        "fit_score":           fit_score,
         "layout_used":         layout_used,
         "language":            language,
         "created_at":          now,
@@ -704,50 +507,6 @@ def _call_gemini_json(prompt: str, max_tokens: int = 4096) -> dict:
     return json.loads(response.text)
 
 
-def _call_gemini_with_search(prompt: str, max_tokens: int = 2048) -> tuple[str, list[str]]:
-    """Call Gemini with the Google Search grounding tool enabled.
-
-    Returns (raw_text, [citation_urls]). Grounding is mutually exclusive
-    with response_mime_type='application/json' on the API, so callers
-    must extract JSON from the text themselves (strip_code_fence helps).
-
-    `thinking_budget=0` is critical here: on gemini-2.5-flash thinking-mode
-    is on by default and silently consumes tokens before the visible text,
-    which means longer grounded prompts come back empty. Other helpers in
-    this file disable it for the same reason.
-    """
-    client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
-    response = client.models.generate_content(
-        model=GEMINI_MODEL,
-        contents=prompt,
-        config=types.GenerateContentConfig(
-            temperature=0.4,
-            max_output_tokens=max_tokens,
-            tools=[types.Tool(google_search=types.GoogleSearch())],
-            thinking_config=types.ThinkingConfig(thinking_budget=0),
-        ),
-    )
-    citations: list[str] = []
-    try:
-        for cand in (response.candidates or []):
-            gm = getattr(cand, "grounding_metadata", None)
-            if not gm:
-                continue
-            for chunk in (getattr(gm, "grounding_chunks", None) or []):
-                web = getattr(chunk, "web", None)
-                if web and getattr(web, "uri", None):
-                    citations.append(web.uri)
-    except Exception:
-        # Citations are nice-to-have; never let extraction errors break the call.
-        pass
-    # Dedupe while preserving order
-    seen = set(); deduped = []
-    for u in citations:
-        if u not in seen:
-            seen.add(u); deduped.append(u)
-    return (response.text or "", deduped)
-
-
 def generate_cv_content(
     job_posting: str, company: str, position: str,
     language: str, custom_notes: str, projects: list
@@ -908,283 +667,6 @@ def _extract_json_object(text: str) -> dict | None:
         except json.JSONDecodeError:
             return None
     return None
-
-
-def extract_company_from_posting(job_posting: str) -> str | None:
-    """Best-effort: pull the company name out of a fetched posting text.
-
-    Reuses the same prompt shape as the /extract-fields route so behavior
-    stays consistent. Returns None if extraction fails or the model is
-    uncertain — caller is expected to handle that gracefully.
-    """
-    if not job_posting.strip():
-        return None
-    prompt = f"""Extrahiere den Firmennamen aus dieser Stellenausschreibung.
-
-STELLENAUSSCHREIBUNG:
-{job_posting[:4000]}
-
-Gib EIN JSON-Objekt zurück: {{ "company": "Firmenname oder null" }}
-"""
-    try:
-        data = _call_gemini_json(prompt, 128)
-    except Exception:
-        return None
-    if not isinstance(data, dict):
-        return None
-    val = data.get("company")
-    if not isinstance(val, str):
-        return None
-    val = val.strip()
-    return val or None
-
-
-def generate_company_info(company: str, position: str, job_posting: str, language: str) -> dict | None:
-    """Two-stage company enrichment:
-
-    1. **Grounded research call** — Gemini + Google Search produces a
-       prose summary of the company (description, employees, founded, HQ,
-       Kununu rating + reviews, etc.) along with citation URLs. The search
-       tool is mutually exclusive with strict JSON output, so the model
-       responds in prose.
-    2. **Non-grounded JSON distillation** — pass that prose plus the
-       posting context into a normal `_call_gemini_json` call that emits
-       the structured shape we store.
-
-    Returns None only when both stages fail or no fields can be filled.
-    Fields the research couldn't substantiate stay null — never invented.
-    """
-    company = (company or "").strip()
-    if not company:
-        return None
-
-    # ── Stage 1: grounded research ────────────────────────────────────
-    # Always English: English search queries return better-indexed results
-    # for company facts (Wikipedia, Crunchbase, LinkedIn, company sites are
-    # all primarily English-indexed). The distillation stage below will
-    # translate / localize into the user's chosen language.
-    research_prompt = f"""Use Google Search to research the company "{company}" briefly.
-
-Reply CONCISELY (no preamble, no repetition) to the following seven points,
-in exactly this order, one point per line with the given prefix:
-
-1) DESCRIPTION: 2 short sentences — industry, product, mission.
-2) EMPLOYEES: a range like "50-200", "1,000-5,000", "10,000+", or "unknown".
-3) FOUNDED: 4-digit year, or "unknown".
-4) HEADQUARTERS: city, country, or "unknown".
-5) WEBSITE: single URL like https://…, or "unknown".
-6) KUNUNU: search explicitly on kununu.com for this employer. If a profile
-   exists, answer "<stars>/5 from <reviews> reviews — <URL>". If not,
-   answer "no profile found".
-7) KUNUNU_SENTIMENT: 1 sentence on what employees praise / criticize, if a
-   Kununu page exists; otherwise "n/a".
-
-Context from a current job posting (use it to disambiguate which company
-this is, especially for common names):
-\"\"\"
-{job_posting[:1500]}
-\"\"\""""
-    try:
-        research_text, sources = _call_gemini_with_search(research_prompt, max_tokens=2048)
-    except Exception as e:
-        print(f"[company_info] grounded research failed: {e}", flush=True)
-        return None
-    if not (research_text or "").strip():
-        print("[company_info] grounded research returned empty text", flush=True)
-        return None
-
-    # ── Stage 2: distill prose → structured JSON ──────────────────────
-    # The research above is English; the distillation translates description
-    # / industry / kununu-summary into the user's language while keeping
-    # neutral fields (URLs, years, ranges, headquarters) as-is.
-    if language == "de":
-        distill_prompt = f"""Aus folgendem englischen Recherche-Text extrahiere strukturierte
-Fakten über das Unternehmen "{company}". Übersetze description, industry und
-kununu.summary ins Deutsche; übernimm URLs, Jahreszahlen und Spannweiten
-unverändert.
-
-RECHERCHE-TEXT (englisch, aus Google-Search-Grounding):
-\"\"\"
-{research_text[:6000]}
-\"\"\"
-
-Gib NUR ein JSON-Objekt mit dieser exakten Struktur zurück:
-
-{{
-  "description":    "2-3 Sätze (Deutsch): Branche, Produkt, Mission",
-  "industry":       "z. B. 'Fintech', 'SaaS', 'E-Mobilität'",
-  "employee_count": "z. B. '200-500', '1.000-5.000', '10.000+' oder null",
-  "founded":        "Gründungsjahr als String (z. B. '2017') oder null",
-  "hq":             "Stadt, Land (z. B. 'Berlin, Deutschland') oder null",
-  "website":        "Hauptwebsite (https://...) oder null",
-  "kununu": {{
-    "rating":        <Float 1.0-5.0> oder null,
-    "reviews_count": <Ganzzahl> oder null,
-    "url":           "kununu-URL oder null",
-    "summary":       "1 Satz Deutsch: was Mitarbeitende loben/kritisieren, oder null"
-  }}
-}}
-
-Regeln:
-- Setze ein Feld auf null, wenn die Recherche es als "unknown" / "no profile
-  found" / "n/a" markiert oder es schlicht nicht nennt.
-- "kununu" als gesamtes Objekt null, wenn keine Sterne in der Recherche stehen.
-- Keine Zahlen erfinden."""
-    else:
-        distill_prompt = f"""Extract structured facts about the company "{company}" from
-the following research text.
-
-RESEARCH TEXT (from Google Search grounding):
-\"\"\"
-{research_text[:6000]}
-\"\"\"
-
-Return ONLY a JSON object with exactly this structure:
-
-{{
-  "description":    "2-3 sentences: industry, product, mission",
-  "industry":       "e.g. 'Fintech', 'SaaS', 'E-Mobility'",
-  "employee_count": "e.g. '200-500', '1,000-5,000', '10,000+' or null",
-  "founded":        "founding year as a string (e.g. '2017') or null",
-  "hq":             "city, country or null",
-  "website":        "main website (https://...) or null",
-  "kununu": {{
-    "rating":        <float 1.0-5.0> or null,
-    "reviews_count": <integer> or null,
-    "url":           "kununu URL or null",
-    "summary":       "1 sentence on praise/criticism, or null"
-  }}
-}}
-
-Rules:
-- Set a field to null when the research marks it 'unknown' / 'no profile
-  found' / 'n/a' or simply doesn't mention it.
-- Set the entire 'kununu' object to null when no Kununu rating is in the
-  research. Don't invent numbers."""
-    try:
-        data = _call_gemini_json(distill_prompt, max_tokens=1024)
-    except Exception as e:
-        print(f"[company_info] distillation failed: {e}", flush=True)
-        return None
-    if not isinstance(data, dict):
-        print(f"[company_info] distillation returned non-dict: {type(data).__name__}", flush=True)
-        return None
-
-    def _clean_str(v):
-        if isinstance(v, str):
-            v = v.strip()
-            if v.lower() in {"null", "none", "n/a", "unbekannt", "unknown", ""}:
-                return None
-            return v
-        return None
-
-    out: dict = {}
-    for key in ("description", "industry", "employee_count", "founded", "hq", "website"):
-        out[key] = _clean_str(data.get(key))
-
-    kununu_raw = data.get("kununu")
-    kununu: dict | None = None
-    if isinstance(kununu_raw, dict):
-        rating = kununu_raw.get("rating")
-        try:
-            rating_f = float(rating) if rating is not None else None
-        except (TypeError, ValueError):
-            rating_f = None
-        if rating_f is not None and not (0.0 <= rating_f <= 5.0):
-            rating_f = None
-        reviews = kununu_raw.get("reviews_count")
-        try:
-            reviews_i = int(reviews) if reviews is not None else None
-        except (TypeError, ValueError):
-            reviews_i = None
-        kununu_url = _clean_str(kununu_raw.get("url"))
-        kununu_summary = _clean_str(kununu_raw.get("summary"))
-        if rating_f is not None or reviews_i or kununu_url or kununu_summary:
-            kununu = {
-                "rating":        rating_f,
-                "reviews_count": reviews_i,
-                "url":           kununu_url,
-                "summary":       kununu_summary,
-            }
-    out["kununu"]     = kununu
-    out["sources"]    = sources[:8]
-    out["fetched_at"] = _now_iso()
-
-    # If literally everything is null, treat as "no info".
-    has_anything = any(out.get(k) for k in
-                       ("description", "industry", "employee_count",
-                        "founded", "hq", "website", "kununu"))
-    return out if has_anything else None
-
-
-def generate_fit_score(
-    profile_text: str,
-    job_posting: str,
-    job_summary: dict | None,
-    language: str,
-) -> dict | None:
-    """Score how well the user's profile matches the posting.
-
-    Returns {score: 0-100, summary, strengths[], gaps[]} or None on failure.
-    """
-    lang = "auf Deutsch" if language == "de" else "in English"
-    js = job_summary or {}
-    searching = js.get("searching_for") or []
-    technologies = js.get("technologies") or []
-    extras = ""
-    if searching:
-        extras += "\nWAS DIE FIRMA SUCHT (bereits extrahiert):\n- " + "\n- ".join(searching[:10])
-    if technologies:
-        extras += "\nGENANNTE TECHNOLOGIEN:\n- " + "\n- ".join(technologies[:20])
-
-    prompt = f"""Bewerte, wie gut der Bewerber zur Stelle passt. Antworte {lang}.
-
-PROFIL DES BEWERBERS:
-{profile_text[:6000]}
-
-STELLENAUSSCHREIBUNG:
-{job_posting[:6000]}
-{extras}
-
-Gib AUSSCHLIESSLICH ein JSON-Objekt zurück:
-{{
-  "score":     <Ganzzahl 0-100>,
-  "summary":   "1 Satz: warum diese Bewertung",
-  "strengths": ["3-5 konkrete Übereinstimmungen (Skill X aus Profil ↔ Anforderung Y aus Posting)"],
-  "gaps":      ["2-4 konkrete Lücken: was die Stelle verlangt, das im Profil fehlt/schwach ist"]
-}}
-
-Regeln:
-- Score-Kalibrierung: 90+ = hervorragender Fit, 70-89 = solide, 50-69 = möglich aber mit Abstrichen,
-  unter 50 = klare Schiefstand. Verzerre NICHT optimistisch.
-- "strengths" und "gaps" müssen KONKRET sein (Skill/Erfahrung/Domain), keine Floskeln.
-- Wenn etwas im Profil und Posting beidseits genannt wird, gehört es zu strengths, nicht zu gaps.
-"""
-    try:
-        data = _call_gemini_json(prompt, 768)
-    except Exception:
-        return None
-    if not isinstance(data, dict):
-        return None
-
-    raw_score = data.get("score")
-    try:
-        score = int(round(float(raw_score)))
-    except (TypeError, ValueError):
-        return None
-    score = max(0, min(100, score))
-
-    def _list_of_strings(val) -> list[str]:
-        if not isinstance(val, list):
-            return []
-        return [s.strip() for s in val if isinstance(s, str) and s.strip()]
-
-    return {
-        "score":     score,
-        "summary":   (data.get("summary") or "").strip(),
-        "strengths": _list_of_strings(data.get("strengths"))[:6],
-        "gaps":      _list_of_strings(data.get("gaps"))[:6],
-    }
 
 
 def generate_anschreiben_content(
@@ -1781,7 +1263,7 @@ def generate():
     company_address = data.get("company_address", "").strip()
     resolved_layout = pick_layout(job_posting, company, position, layout)
 
-    projects = ensure_project_language(load_projects(), language)
+    projects = load_projects()
     result   = {"layout_used": resolved_layout, "job_posting": job_posting}
 
     try:
@@ -1798,24 +1280,6 @@ def generate():
     except Exception as e:
         return jsonify({"error": f"Gemini-Fehler: {str(e)}"}), 500
 
-    # Fit score and company info are best-effort: if either Gemini call
-    # fails we still want the CV/Anschreiben to ship.
-    try:
-        result["fit_score"] = generate_fit_score(
-            profile_to_text(load_profile()),
-            job_posting,
-            result.get("job_summary"),
-            language,
-        )
-    except Exception:
-        result["fit_score"] = None
-    try:
-        result["company_info"] = generate_company_info(
-            company, position, job_posting, language,
-        )
-    except Exception:
-        result["company_info"] = None
-
     job_url = (data.get("job_url") or "").strip()
     try:
         tracked_seconds = int(data.get("tracked_seconds") or 0)
@@ -1826,8 +1290,6 @@ def generate():
         job_url=job_url,
         cv_content          = result.get("cv_content"),
         anschreiben_content = result.get("anschreiben_content"),
-        company_info        = result.get("company_info"),
-        fit_score           = result.get("fit_score"),
         layout_used         = resolved_layout,
         language            = language,
         tracked_seconds     = tracked_seconds,
@@ -1843,7 +1305,7 @@ def render_doc():
     data     = request.json
     doc_type = data.get("doc_type", "cv")
     language = data.get("language", "de")
-    projects = ensure_project_language(load_projects(), language)
+    projects = load_projects()
 
     try:
         if doc_type == "cv":
@@ -1941,71 +1403,6 @@ Regeln:
     try:
         result = call_gemini(prompt, 1024)
         return jsonify({"text": result})
-    except Exception as e:
-        return jsonify({"error": f"Gemini-Fehler: {str(e)}"}), 500
-
-
-@app.route("/chat", methods=["POST"])
-def chat():
-    if not os.environ.get("GEMINI_API_KEY"):
-        return jsonify({"error": "GEMINI_API_KEY nicht gesetzt."}), 500
-
-    data         = request.json
-    message      = data.get("message", "").strip()
-    history      = data.get("history", [])   # [{role, text}, ...]
-    cv_html      = data.get("cv_html", "")
-    anschreiben  = data.get("anschreiben_html", "")
-    job_posting  = data.get("job_posting", "")
-
-    if not message:
-        return jsonify({"error": "Keine Nachricht."}), 400
-
-    from bs4 import BeautifulSoup
-
-    def html_to_text(html):
-        if not html:
-            return ""
-        return BeautifulSoup(html, "html.parser").get_text(separator="\n", strip=True)
-
-    cv_text          = html_to_text(cv_html)
-    anschreiben_text = html_to_text(anschreiben)
-
-    context_parts = [f"Du bist ein erfahrener HR-Berater und Bewerbungscoach für {get_contact()['full_name']}."]
-    if job_posting:
-        context_parts.append(f"STELLENAUSSCHREIBUNG:\n{job_posting[:3000]}")
-    if cv_text:
-        context_parts.append(f"AKTUELLER LEBENSLAUF (Text):\n{cv_text[:3000]}")
-    if anschreiben_text:
-        context_parts.append(f"AKTUELLES ANSCHREIBEN (Text):\n{anschreiben_text[:2000]}")
-    context_parts.append(
-        "Beantworte Fragen präzise und konkret. Gib bei Verbesserungsvorschlägen immer "
-        "spezifische Beispiele. Antworte auf Deutsch außer der Nutzer schreibt Englisch. "
-        "Nutze Markdown für Formatierung (Listen, Fett) – das wird im Chat gerendert."
-    )
-    system_prompt = "\n\n".join(context_parts)
-
-    # Build contents list: system + history + new message
-    contents = [{"role": "user", "parts": [{"text": system_prompt + "\n\nVerstanden? Dann warte auf die erste Frage."}]},
-                {"role": "model", "parts": [{"text": "Verstanden! Ich habe den Kontext gelesen und helfe dir gerne mit konkreten Verbesserungsvorschlägen."}]}]
-
-    for h in history:
-        role = "user" if h["role"] == "user" else "model"
-        contents.append({"role": role, "parts": [{"text": h["text"]}]})
-
-    contents.append({"role": "user", "parts": [{"text": message}]})
-
-    try:
-        client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
-        response = client.models.generate_content(
-            model=GEMINI_MODEL,
-            contents=contents,
-            config=types.GenerateContentConfig(
-                temperature=0.7,
-                max_output_tokens=2048,
-                thinking_config=types.ThinkingConfig(thinking_budget=0),
-            ),
-        )
-        return jsonify({"reply": response.text.strip()})
     except Exception as e:
         return jsonify({"error": f"Gemini-Fehler: {str(e)}"}), 500
 
@@ -2175,8 +1572,7 @@ def render_project_list():
     layout   = data.get("layout", "modern")
     ids      = data.get("ids") if isinstance(data.get("ids"), list) else None
     try:
-        projects = ensure_project_language(load_projects(), language)
-        html = render_project_list_html(projects, language, layout, ids)
+        html = render_project_list_html(load_projects(), language, layout, ids)
     except Exception as e:
         return jsonify({"error": f"Render-Fehler: {str(e)}"}), 500
     return jsonify({"html": html})
@@ -2445,8 +1841,6 @@ def create_application():
             applied_at = _today_iso()
     cv_content          = data.get("cv_content")
     anschreiben_content = data.get("anschreiben_content")
-    company_info        = data.get("company_info")
-    fit_score           = data.get("fit_score")
     entry = {
         "id":                  str(uuid.uuid4())[:8],
         "company":             company,
@@ -2459,8 +1853,6 @@ def create_application():
         "job_url":             (data.get("job_url") or "").strip()[:JOB_URL_MAX],
         "cv_content":          cv_content          if isinstance(cv_content,          dict) else None,
         "anschreiben_content": anschreiben_content if isinstance(anschreiben_content, dict) else None,
-        "company_info":        company_info        if isinstance(company_info,        dict) else None,
-        "fit_score":           fit_score           if isinstance(fit_score,           dict) else None,
         "layout_used":         data.get("layout_used"),
         "language":            data.get("language"),
         "created_at":          now,
@@ -2559,63 +1951,6 @@ def _queue_close_page(message: str, sub: str = "", auto_close: bool = True) -> R
     return Response(html, mimetype="text/html")
 
 
-def _enrich_queue_item_async(qid: str, url: str):
-    """Background: fetch the posting, compute fit_score + company_info,
-    update the queue row.
-
-    Fire-and-forget so the API response (and the bookmarklet's auto-closing
-    popup) isn't blocked by 5-15 s of fetch + Gemini latency. Fit score
-    and company info are computed independently — one failing won't void
-    the other.
-    """
-    import threading
-
-    def _run():
-        try:
-            try:
-                posting = fetch_job_posting(url)
-            except Exception as e:
-                db.update_queue_item(qid, error=f"Fetch fehlgeschlagen: {e}"[:300])
-                return
-            if not os.environ.get("GEMINI_API_KEY"):
-                db.update_queue_item(qid, error="GEMINI_API_KEY nicht gesetzt")
-                return
-
-            # Fit score
-            fit_err = ""
-            try:
-                fit = generate_fit_score(
-                    profile_to_text(load_profile()),
-                    posting,
-                    None,    # no job_summary at queue-time; the prompt handles None
-                    "de",    # queue-time has no language hint — default to German
-                )
-            except Exception as e:
-                fit, fit_err = None, f"Scoring fehlgeschlagen: {e}"
-            if fit:
-                db.update_queue_item(qid, fit_score=fit)
-            elif fit_err:
-                db.update_queue_item(qid, error=fit_err[:300])
-
-            # Company info — independent enrichment.
-            company_name = extract_company_from_posting(posting)
-            if company_name:
-                try:
-                    info = generate_company_info(company_name, "", posting, "de")
-                except Exception:
-                    info = None
-                if info:
-                    db.update_queue_item(qid, company_info=info)
-        finally:
-            # Always mark the enrichment attempt as finished, even on failure —
-            # this is the signal the frontend uses to stop polling. Without
-            # this, items whose company couldn't be extracted (and thus never
-            # got a company_info) would have the queue view polling forever.
-            db.update_queue_item(qid, enriched_at=_now_iso())
-
-    threading.Thread(target=_run, daemon=True).start()
-
-
 @app.route("/queue", methods=["GET"])
 def list_queue_route():
     status = (request.args.get("status") or "").strip() or None
@@ -2645,7 +1980,6 @@ def add_queue_route():
 
     qid = str(uuid.uuid4())[:8]
     item = db.add_queue_item(qid, url, title, note, _now_iso())
-    _enrich_queue_item_async(qid, url)
     return jsonify({"item": item, "duplicate": False}), 201
 
 
@@ -2669,27 +2003,6 @@ def update_queue_route(qid):
         kwargs["application_id"] = (data.get("application_id") or "").strip() or None
     item = db.update_queue_item(qid, **kwargs)
     return jsonify(item)
-
-
-@app.route("/queue/<qid>/enrich", methods=["POST"])
-def reenrich_queue_route(qid):
-    """Re-run the background enrichment for a single queue row.
-
-    Useful when (a) the initial enrichment failed quietly, (b) we improved
-    the prompt and want a fresh result, or (c) the user pasted a URL whose
-    server was temporarily down.
-    """
-    item = db.get_queue_item(qid)
-    if not item:
-        return jsonify({"error": "Queue-Eintrag nicht gefunden."}), 404
-    # Clear sentinels so the polling logic picks the row up again.
-    with db.get_conn() as conn:
-        conn.execute(
-            "UPDATE job_queue SET enriched_at = NULL, error = NULL WHERE id = ?",
-            (qid,),
-        )
-    _enrich_queue_item_async(qid, item["url"])
-    return jsonify({"ok": True})
 
 
 @app.route("/queue/<qid>", methods=["DELETE"])
@@ -2723,7 +2036,6 @@ def queue_add_via_bookmarklet():
 
     qid = str(uuid.uuid4())[:8]
     db.add_queue_item(qid, url, title, "", _now_iso())
-    _enrich_queue_item_async(qid, url)
     return _queue_close_page(
         "Zur Queue hinzugefügt",
         sub=title or url,
