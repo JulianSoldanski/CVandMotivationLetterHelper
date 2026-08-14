@@ -3,9 +3,9 @@
 import re
 from html import escape as html_escape
 
-from cv_layouts import ANSCHREIBEN_HTML_STYLE, LAYOUTS, PROJECT_LIST_STYLE
-from personal_config import get_contact, sender_address_html
-from store import (
+from render.cv_layouts import ANSCHREIBEN_HTML_STYLE, LAYOUTS, PROJECT_LIST_STYLE
+from core.personal_config import get_contact, sender_address_html
+from core.store import (
     fmt_date, load_profile, normalize_project_detail, project_detail_filled,
     project_locale, _sort_key,
 )

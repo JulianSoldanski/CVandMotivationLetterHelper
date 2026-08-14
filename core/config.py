@@ -9,8 +9,10 @@ import os
 
 from dotenv import load_dotenv
 
-import db
-import demo_mode
+from core import db
+
+from core import demo_mode
+
 
 load_dotenv()
 

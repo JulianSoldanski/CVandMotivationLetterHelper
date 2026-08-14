@@ -15,14 +15,22 @@ module next door:
 """
 from flask import Flask
 
-import config
-import demo_mode
-import routes_applications
-import routes_generator
-import routes_profile
-import routes_projects
-import routes_queue
-import routes_settings
+from core import config
+
+from core import demo_mode
+
+from routes import applications as routes_applications
+
+from routes import generator as routes_generator
+
+from routes import profile as routes_profile
+
+from routes import projects as routes_projects
+
+from routes import queue as routes_queue
+
+from routes import settings as routes_settings
+
 
 app = Flask(__name__)
 

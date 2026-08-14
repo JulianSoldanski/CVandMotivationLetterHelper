@@ -3,7 +3,8 @@
 from datetime import date, datetime
 from urllib.parse import urlsplit, urlunsplit, parse_qsl, urlencode
 
-import config
+from core import config
+
 
 def _now_iso() -> str:
     return datetime.now().isoformat(timespec="seconds")

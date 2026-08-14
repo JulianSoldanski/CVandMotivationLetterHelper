@@ -5,8 +5,8 @@ import os
 from flask import Blueprint, jsonify, request
 
 import prompts
-from gemini import _call_gemini_json, call_gemini
-from store import load_settings, save_settings
+from ai.gemini import _call_gemini_json, call_gemini
+from core.store import load_settings, save_settings
 
 bp = Blueprint("settings", __name__)
 

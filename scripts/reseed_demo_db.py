@@ -29,8 +29,8 @@ sys.path.insert(0, ROOT)
 from dotenv import load_dotenv  # noqa: E402
 load_dotenv()
 
-import demo_mode  # noqa: E402
-import db         # noqa: E402
+from core import demo_mode  # noqa: E402
+from core import db         # noqa: E402
 
 
 def main() -> int:

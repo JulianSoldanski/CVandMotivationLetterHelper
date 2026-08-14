@@ -7,7 +7,8 @@ import re
 from google import genai
 from google.genai import types
 
-import config
+from core import config
+
 
 def strip_code_fence(text: str) -> str:
     text = text.strip()

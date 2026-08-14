@@ -14,11 +14,11 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 
 TMP = tempfile.mkdtemp(prefix="cvcreater-test-")
 
-import db  # noqa: E402
+from core import db  # noqa: E402
 
 db.DB_FILE = os.path.join(TMP, "test.db")
 
-import config  # noqa: E402
+from core import config  # noqa: E402
 
 config.PROFILE_FILE = os.path.join(TMP, "profile.json")
 config.PROJECTS_FILE = os.path.join(TMP, "projects.json")

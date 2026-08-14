@@ -6,10 +6,10 @@ the values they interpolate.
 from datetime import date
 
 import prompts
-from cv_layouts import LAYOUTS
-from personal_config import get_contact
-from gemini import _call_gemini_json
-from store import _sort_key, load_profile, load_settings, profile_to_text, projects_to_text
+from render.cv_layouts import LAYOUTS
+from core.personal_config import get_contact
+from ai.gemini import _call_gemini_json
+from core.store import _sort_key, load_profile, load_settings, profile_to_text, projects_to_text
 
 
 

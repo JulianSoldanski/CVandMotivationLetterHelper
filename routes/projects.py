@@ -7,9 +7,9 @@ import uuid
 from flask import Blueprint, jsonify, request
 
 import prompts
-from gemini import _call_gemini_json
-from render import render_project_list_html
-from store import (
+from ai.gemini import _call_gemini_json
+from render.documents import render_project_list_html
+from core.store import (
     load_projects, normalize_project_detail, save_projects,
 )
 

@@ -4,7 +4,7 @@ import uuid
 
 from flask import Blueprint, jsonify, request
 
-from store import load_profile, save_profile
+from core.store import load_profile, save_profile
 
 bp = Blueprint("profile", __name__)
 

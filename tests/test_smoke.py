@@ -14,9 +14,12 @@ from string import Template
 from unittest import mock
 
 from _bootstrap import flask_app  # rebinds every data path first
-import db as db_module
-import gemini
-import routes_generator
+from core import db as db_module
+
+from ai import gemini
+
+from routes import generator as routes_generator
+
 
 
 class RouteSmokeTest(unittest.TestCase):

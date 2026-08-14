@@ -41,7 +41,7 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
-import db  # noqa: E402
+from core import db  # noqa: E402
 
 DATA_DIR    = os.path.join(ROOT, "data")
 CONFIG_DIR  = os.path.join(ROOT, "config")
@@ -225,7 +225,7 @@ def main() -> int:
     # they're actually about to nuke their real profile under a misleading
     # name). Force them to unset DEMO_MODE first.
     try:
-        import demo_mode  # noqa: WPS433
+        from core import demo_mode  # noqa: WPS433
         if demo_mode.is_demo_mode() and args.command in ("demo", "mine"):
             print("ERROR: DEMO_MODE=1 is currently set in your environment.")
             print("This script operates on your REAL data files in data/ and config/.")

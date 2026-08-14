@@ -7,17 +7,19 @@ import requests as http_requests
 from bs4 import BeautifulSoup
 from flask import Blueprint, jsonify, make_response, render_template, request
 
-import config
-from cv_layouts import LAYOUTS
-import demo_mode
+from core import config
+
+from render.cv_layouts import LAYOUTS
+from core import demo_mode
+
 import prompts
-from gemini import _generate, _call_gemini_json, call_gemini
-from generate import (
+from ai.gemini import _generate, _call_gemini_json, call_gemini
+from ai.generate import (
     generate_anschreiben_content, generate_cv_content, generate_job_summary
 )
-from render import render_anschreiben_html, render_cv_html
-from store import load_projects
-from tracker import log_application
+from render.documents import render_anschreiben_html, render_cv_html
+from core.store import load_projects
+from core.tracker import log_application
 
 bp = Blueprint("generator", __name__)
 

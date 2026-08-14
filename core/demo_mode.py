@@ -68,7 +68,7 @@ def _build_demo_db(db_path: str, apps_seed: str) -> None:
     """
     # Temporarily override DB_FILE so db.init_schema() targets the demo path
     # without us having to expose a public setter just for this seed step.
-    import db as _db  # noqa: WPS433 — local import is intentional
+    from core import db as _db  # noqa: WPS433 — local import is intentional
     original = _db.DB_FILE
     try:
         _db.DB_FILE = db_path
@@ -127,6 +127,6 @@ def bootstrap() -> bool:
     _seed_demo_workdir()
     # Rebind db.DB_FILE so every subsequent get_conn() targets the demo DB.
     # Done here (rather than at import time) to avoid a circular import.
-    import db  # noqa: WPS433
+    from core import db  # noqa: WPS433
     db.DB_FILE = db_path()
     return True

@@ -2,12 +2,13 @@
 plus the text serializers that feed the generation prompts.
 """
 
-from personal_config import get_candidate_base
+from core.personal_config import get_candidate_base
 
 import json
 import os
 
-import config
+from core import config
+
 
 def load_projects() -> list:
     try:

@@ -32,7 +32,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-import db  # noqa: E402
+from core import db  # noqa: E402
 
 LINEAR_STAGES = [
     "documents_created",

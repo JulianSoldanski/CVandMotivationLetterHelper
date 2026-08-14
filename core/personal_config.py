@@ -17,7 +17,7 @@ def _personal_file_path() -> str:
     the path without us needing a re-import dance.
     """
     try:
-        import demo_mode  # noqa: WPS433 — lazy avoids an import cycle
+        from core import demo_mode  # noqa: WPS433 — lazy avoids an import cycle
         return demo_mode.cv_personal_path()
     except ImportError:
         return os.path.join(_BASE_DIR, "config", "cv_personal.json")

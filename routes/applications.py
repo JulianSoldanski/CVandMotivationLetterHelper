@@ -4,10 +4,12 @@ import uuid
 
 from flask import Blueprint, jsonify, request
 
-import config
-import db
-from tracker import apply_stage_transition, load_applications
-from util import _normalize_calendar_date, _now_iso, _today_iso
+from core import config
+
+from core import db
+
+from core.tracker import apply_stage_transition, load_applications
+from core.util import _normalize_calendar_date, _now_iso, _today_iso
 
 bp = Blueprint("applications", __name__)
 
