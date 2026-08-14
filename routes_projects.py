@@ -6,6 +6,7 @@ import uuid
 
 from flask import Blueprint, jsonify, request
 
+import prompts
 from gemini import _call_gemini_json
 from render import render_project_list_html
 from store import (
@@ -112,43 +113,14 @@ def draft_project_detail():
     grade    = data.get("grade") or (project or {}).get("grade")
     existing = normalize_project_detail(data.get("detail") or (project or {}).get("detail"))
 
-    prompt = f"""Du bereitest eine Projektliste (Referenzliste) für Bewerbungen bei Beratungen auf.
-Wandle den folgenden Kurzeintrag in strukturierte Projektangaben um — auf Deutsch UND auf Englisch.
-
-PROJEKT-TITEL: {title}
-BESCHREIBUNG: {desc}
-TAGS: {", ".join(tags) if tags else "-"}
-NOTE: {grade or "-"}
-BEREITS ERFASST (falls gefüllt, übernehmen statt neu erfinden):
-{json.dumps(existing, ensure_ascii=False)}
-
-Antworte NUR mit JSON in exakt dieser Struktur:
-{{
-  "client": "Auftraggeber/Arbeitgeber/Hochschule, sonst \\"\\"",
-  "period": "z.B. 03/2024 – 07/2024, sonst \\"\\"",
-  "team_size": "z.B. 4 Personen, sonst \\"\\"",
-  "technologies": ["konkrete Technologien, Methoden, Tools"],
-  "de": {{
-    "title": "sachlicher Projekttitel (was es war, nicht der interne Name)",
-    "summary": "die Kurzbeschreibung auf Deutsch (wird im Lebenslauf genutzt)",
-    "role": "z.B. Fullstack-Entwickler, Requirements Engineer",
-    "situation": "EIN Satz zum Ausgangsproblem",
-    "contributions": ["2-3 aktiv formulierte Stichpunkte, beginnend mit einem Verb"],
-    "result": "EIN Satz: was sich messbar oder erkennbar geändert hat",
-    "team_size": "Teamgröße auf Deutsch, z.B. \\"4 Personen\\", sonst \\"\\""
-  }},
-  "en": {{ "title": "...", "summary": "...", "role": "...", "situation": "...", "contributions": ["..."], "result": "...", "team_size": "e.g. \\"4 people\\"" }}
-}}
-
-Regeln:
-- KEINE Fakten erfinden. Wenn Kunde, Zeitraum oder Teamgröße nicht aus dem Text hervorgehen: leerer String.
-- "result" nur aus Belegbarem ableiten (z.B. Note, Hackathon-Sieg, ausgelieferter Prototyp) — keine erfundenen Prozentzahlen.
-- Stichpunkte kurz halten (max. ~15 Wörter), aktiv, ohne "Ich".
-- Die englische Fassung ist eine Übersetzung derselben Aussagen, keine neue Version.
-- JEDES Textfeld muss in der Sprache seines Blocks stehen: der "de"-Block
-  vollständig auf Deutsch, der "en"-Block vollständig auf Englisch — auch dann,
-  wenn Titel oder Beschreibung oben in der jeweils anderen Sprache verfasst sind.
-"""
+    prompt = prompts.render(
+        "project_detail",
+        title=title,
+        description=desc,
+        tags=", ".join(tags) if tags else "-",
+        grade=grade or "-",
+        existing=json.dumps(existing, ensure_ascii=False),
+    )
     try:
         result = _call_gemini_json(prompt, 2048)
     except Exception as e:

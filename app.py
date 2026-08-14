@@ -8,6 +8,7 @@ module next door:
     store.py      profile / projects / settings on disk
     tracker.py    application logging
     generate.py   prompt builders
+    prompts/      the prompt texts (.md) + their loader
     render.py     CV / Anschreiben / Projektliste HTML
     db.py         SQLite access
     routes_*.py   one blueprint per view

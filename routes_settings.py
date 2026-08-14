@@ -4,6 +4,7 @@ import os
 
 from flask import Blueprint, jsonify, request
 
+import prompts
 from gemini import _call_gemini_json, call_gemini
 from store import load_settings, save_settings
 
@@ -38,22 +39,7 @@ def analyze_style():
     # The analysis is the instruction layer: always English, language-agnostic,
     # so it can be applied to both German and English generation. The example
     # itself may be in either language.
-    prompt = f"""Analyze the writing style of the example cover letter below and describe it in English, precisely enough that another AI can imitate this style later without copying the content. The example may be in German or English — describe the style itself, which carries over regardless of the language a letter is later written in.
-
-EXAMPLE TEXT:
-\"\"\"
-{example[:6000]}
-\"\"\"
-
-Return 6–10 bullet points covering these aspects (where recognizable):
-- Tone (formal ↔ casual, direct ↔ reserved, confident ↔ modest)
-- Sentence structure (length, active/passive, parataxis/hypotaxis)
-- Word choice (jargon, anglicisms, industry terms, deliberately avoided filler phrases)
-- Structural patterns (opening, line of argument, closing)
-- Recurring rhetorical devices or quirks
-
-Format: plain markdown bullet list (\"- …\"), no preamble or closing remark, no salutation to me.
-"""
+    prompt = prompts.render("analyze_style", example=example[:6000])
     try:
         analysis = call_gemini(prompt, 1024).strip()
         return jsonify({"analysis": analysis})
@@ -95,57 +81,7 @@ def parse_cv_pdf():
     # Self-contained shape: experience/education carry company/institution inline
     # (not via profile ID lookup) because this PDF doesn't reference the user's
     # current profile.
-    prompt = f"""Du erhältst den Rohtext eines Lebenslaufs (CV) aus einer PDF.
-Extrahiere die Inhalte in folgendes JSON-Format. Wenn ein Feld nicht im Text
-steht, lass es weg bzw. setze es auf null oder eine leere Liste.
-
-CV-TEXT:
-\"\"\"
-{text[:14000]}
-\"\"\"
-
-Gib NUR ein JSON-Objekt zurück:
-{{
-  "profile": "2-4 Sätze Profil-Statement (falls nicht vorhanden, freilassen)",
-  "experience": [
-    {{
-      "title":    "Berufsbezeichnung",
-      "company":  "Unternehmen",
-      "location": "Stadt (falls vorhanden)",
-      "start":    "YYYY-MM (falls vorhanden, sonst null)",
-      "end":      "YYYY-MM oder 'heute' (falls vorhanden)",
-      "bullets":  ["bullet 1", "bullet 2"]
-    }}
-  ],
-  "education": [
-    {{
-      "degree":      "Abschluss / Studiengang",
-      "institution": "Universität / Schule",
-      "location":    "Stadt",
-      "start":       "YYYY-MM",
-      "end":         "YYYY-MM"
-    }}
-  ],
-  "projects": [
-    {{
-      "title":       "Projekttitel",
-      "description": "1-2 Sätze"
-    }}
-  ],
-  "skills": {{
-    "Technisch": "kommagetrennte Liste",
-    "Methoden":  "kommagetrennte Liste",
-    "Sprachen":  "kommagetrennte Liste"
-  }}
-}}
-
-Regeln:
-- Nutze für skills die Kategorien aus dem CV; wenn keine vorhanden, fasse
-  alle Hard-Skills unter "Technisch", Soft-Skills unter "Methoden", Sprachen
-  unter "Sprachen" zusammen.
-- Erfinde keine Inhalte. Wenn der Abschnitt im CV fehlt, gib eine leere Liste
-  bzw. ein leeres Objekt zurück.
-"""
+    prompt = prompts.render("parse_cv_pdf", text=text[:14000])
     try:
         cv_content = _call_gemini_json(prompt, 4096)
     except Exception as e:

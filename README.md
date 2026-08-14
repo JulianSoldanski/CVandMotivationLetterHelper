@@ -301,6 +301,9 @@ CVCreater/
 ├── store.py                  # profile/projects/settings JSON + prompt text
 ├── tracker.py                # Application logging
 ├── generate.py               # Prompt builders (CV, Anschreiben, summary)
+├── prompts/                  # The prompt texts as .md + the loader
+│   ├── __init__.py           # render("<name>", **values) — $placeholders
+│   └── *.md                  # One file per prompt, edited without touching .py
 ├── render.py                 # CV / Anschreiben / Projektliste HTML
 ├── util.py                   # Date + URL helpers
 ├── routes_*.py               # One blueprint per view

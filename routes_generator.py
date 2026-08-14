@@ -10,6 +10,7 @@ from flask import Blueprint, jsonify, make_response, render_template, request
 import config
 from cv_layouts import LAYOUTS
 import demo_mode
+import prompts
 from gemini import _generate, _call_gemini_json, call_gemini
 from generate import (
     generate_anschreiben_content, generate_cv_content, generate_job_summary
@@ -200,20 +201,7 @@ def extract_fields():
     if not job_posting:
         return jsonify({"error": "Kein Text angegeben."}), 400
 
-    prompt = f"""Extrahiere folgende Informationen aus dieser Stellenausschreibung. Falls eine Information nicht vorhanden ist, gib null zurück.
-
-STELLENAUSSCHREIBUNG:
-{job_posting[:6000]}
-
-Gib ein JSON-Objekt zurück:
-{{
-  "company": "Firmenname oder null",
-  "position": "Genaue Stellenbezeichnung oder null",
-  "contact": "Persönliche Anrede falls Name bekannt z.B. 'Sehr geehrte Frau Müller', sonst 'Sehr geehrte Damen und Herren'",
-  "city": "Stadt des Unternehmensstandorts oder null",
-  "company_address": "Vollständige Postanschrift mit Straße, PLZ und Stadt — nur wenn explizit in der Ausschreibung genannt, sonst null"
-}}
-"""
+    prompt = prompts.render("extract_fields", job_posting=job_posting[:6000])
     try:
         result = _call_gemini_json(prompt, 512)
         return jsonify(result)
@@ -231,19 +219,7 @@ def improve_text():
     if not text or not instruction:
         return jsonify({"error": "Text und Anweisung erforderlich."}), 400
 
-    prompt = f"""Du bist ein professioneller Bewerbungsschreiber. Überarbeite den folgenden Absatz eines Anschreibens basierend auf der Anweisung.
-
-ORIGINAL-ABSATZ:
-{text}
-
-ANWEISUNG:
-{instruction}
-
-Regeln:
-- Gib NUR den überarbeiteten Absatz zurück, ohne Erklärungen oder Anführungszeichen
-- Behalte Stil und Länge ähnlich, außer die Anweisung sagt etwas anderes
-- Keine neuen Fakten erfinden
-"""
+    prompt = prompts.render("improve_text", text=text, instruction=instruction)
     try:
         result = call_gemini(prompt, 1024)
         return jsonify({"text": result})

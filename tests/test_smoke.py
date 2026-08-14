@@ -6,12 +6,17 @@ either hit AI-free routes or stub the generation helpers.
 
 Run with:  python3 -m unittest discover -s tests -v
 """
+import ast
 import json
+import pathlib
 import unittest
+from string import Template
 from unittest import mock
 
-from _bootstrap import app_module, flask_app  # rebinds every data path first
+from _bootstrap import flask_app  # rebinds every data path first
 import db as db_module
+import gemini
+import routes_generator
 
 
 class RouteSmokeTest(unittest.TestCase):
@@ -66,14 +71,30 @@ class BadBodyTest(unittest.TestCase):
     def setUp(self):
         self.c = flask_app.test_client()
 
-    def test_post_without_body(self):
-        for path in ("/fetch-job", "/render", "/save", "/projects"):
+    PATHS = ("/fetch-job", "/render", "/save", "/projects", "/queue",
+             "/applications", "/profile/experience")
+
+    def test_empty_body(self):
+        for path in self.PATHS:
             with self.subTest(path=path):
                 r = self.c.post(path, data="", content_type="application/json")
                 self.assertLess(
                     r.status_code, 500,
                     f"{path} returned {r.status_code} on an empty body",
                 )
+
+    def test_malformed_json(self):
+        for path in self.PATHS:
+            with self.subTest(path=path):
+                r = self.c.post(path, data="{not json", content_type="application/json")
+                self.assertLess(
+                    r.status_code, 500,
+                    f"{path} returned {r.status_code} on malformed JSON",
+                )
+
+    def test_settings_put_without_body(self):
+        self.assertLess(
+            self.c.put("/settings", data="", content_type="application/json").status_code, 500)
 
 
 class RenderTest(unittest.TestCase):
@@ -139,9 +160,9 @@ class GenerateTest(unittest.TestCase):
         anschreiben = {"company_name": "ACME", "paragraphs": ["A"]}
 
         with mock.patch.dict("os.environ", {"GEMINI_API_KEY": "test-key"}), \
-             mock.patch.object(app_module, "generate_cv_content", return_value=cv), \
-             mock.patch.object(app_module, "generate_anschreiben_content", return_value=anschreiben), \
-             mock.patch.object(app_module, "generate_job_summary", return_value={
+             mock.patch.object(routes_generator, "generate_cv_content", return_value=cv), \
+             mock.patch.object(routes_generator, "generate_anschreiben_content", return_value=anschreiben), \
+             mock.patch.object(routes_generator, "generate_job_summary", return_value={
                  "company_does": "X", "searching_for": [], "technologies": []}):
             r = self.c.post("/generate", json={
                 "job_posting": "Wir suchen einen Entwickler.",
@@ -156,6 +177,29 @@ class GenerateTest(unittest.TestCase):
         self.assertEqual(data["cv_content"], cv)
         self.assertEqual(data["anschreiben_content"], anschreiben)
         self.assertIn("job_summary", data)
+        # The removed AI features must not creep back into the payload: both
+        # cost an extra Gemini round-trip per generate.
+        self.assertNotIn("fit_score", data)
+        self.assertNotIn("company_info", data)
+
+    def test_generate_makes_no_unstubbed_calls(self):
+        """Nothing may reach the network beyond the three stubbed generators.
+
+        Guards the removal of the grounded company research, which used to fire
+        even when everything else was mocked.
+        """
+        cv = {"profile": "P", "experience": [], "education": [], "projects": [], "skills": {}}
+        with mock.patch.dict("os.environ", {"GEMINI_API_KEY": "test-key"}), \
+             mock.patch.object(gemini, "_gemini") as gem, \
+             mock.patch.object(routes_generator, "generate_cv_content", return_value=cv), \
+             mock.patch.object(routes_generator, "generate_job_summary", return_value={}):
+            r = self.c.post("/generate", json={
+                "job_posting": "Wir suchen einen Entwickler.",
+                "company": "ACME", "position": "Dev",
+                "language": "de", "doc_type": "cv",
+            })
+        self.assertEqual(r.status_code, 200, r.get_data(as_text=True))
+        gem.assert_not_called()
 
     def test_generate_without_posting_is_400(self):
         with mock.patch.dict("os.environ", {"GEMINI_API_KEY": "test-key"}):
@@ -276,6 +320,55 @@ class LegacyDatabaseTest(unittest.TestCase):
             self.assertEqual(len(db_module.list_queue()), 1)
         finally:
             db_module.DB_FILE = original
+
+
+class PromptTest(unittest.TestCase):
+    """The prompts live in prompts/*.md, so a renamed placeholder no longer
+    breaks at import time — only when that prompt is next sent. These checks
+    catch it in the suite instead.
+    """
+
+    PROMPT_DIR = pathlib.Path(__file__).resolve().parent.parent / "prompts"
+
+    def _md_files(self):
+        return sorted(self.PROMPT_DIR.glob("*.md"))
+
+    def test_every_prompt_renders_without_leftovers(self):
+        for path in self._md_files():
+            with self.subTest(prompt=path.name):
+                template = Template(path.read_text(encoding="utf-8"))
+                filled = template.substitute(
+                    {name: f"<{name}>" for name in template.get_identifiers()}
+                )
+                self.assertNotIn("$", filled, f"{path.name} has an unfilled placeholder")
+
+    def test_call_sites_pass_exactly_the_declared_placeholders(self):
+        """Each prompts.render(...) call must match its .md file — no missing
+        value (KeyError at request time), no stale extra (silently ignored).
+        """
+        root = self.PROMPT_DIR.parent
+        declared = {
+            p.stem: set(Template(p.read_text(encoding="utf-8")).get_identifiers())
+            for p in self._md_files()
+        }
+        seen = set()
+        for py in sorted(root.glob("*.py")):
+            for node in ast.walk(ast.parse(py.read_text(encoding="utf-8"))):
+                if not (isinstance(node, ast.Call)
+                        and isinstance(node.func, ast.Attribute)
+                        and node.func.attr == "render"
+                        and isinstance(node.func.value, ast.Name)
+                        and node.func.value.id == "prompts"):
+                    continue
+                name = node.args[0].value
+                with self.subTest(prompt=name, at=f"{py.name}:{node.lineno}"):
+                    self.assertIn(name, declared, f"{name}.md does not exist")
+                    seen.add(name)
+                    self.assertEqual(
+                        {kw.arg for kw in node.keywords}, declared[name],
+                        f"{py.name}:{node.lineno} does not match {name}.md",
+                    )
+        self.assertEqual(seen, set(declared), "a prompt file has no call site")
 
 
 if __name__ == "__main__":
