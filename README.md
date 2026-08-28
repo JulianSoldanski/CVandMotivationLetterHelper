@@ -164,16 +164,17 @@ A few things that aren't obvious from the screenshot:
                              │ /settings, /analyze-style …
 ┌────────────────────────────▼─────────────────────────────────┐
 │ Flask — app.py wires six blueprints                          │
-│  routes_generator · routes_profile   · routes_projects       │
-│  routes_settings  · routes_applications · routes_queue       │
+│  routes/generator · routes/profile      · routes/projects    │
+│  routes/settings  · routes/applications · routes/queue       │
 │    ↓ backed by                                               │
-│  generate.py (prompts) · render.py (HTML) · store.py (JSON)  │
-│  tracker.py (logging)  · gemini.py (the one Gemini call)     │
+│  ai/generate + prompts/*.md · render/documents (HTML)        │
+│  core/store (JSON) · core/tracker (logging)                  │
+│  ai/gemini (the one Gemini call)                             │
 └────┬──────────────────────────────────────────┬──────────────┘
      │                                          │
      ▼                                          ▼
 ┌──────────────────┐                  ┌────────────────────────┐
-│ db.py (SQLite)   │                  │ JSON config files      │
+│ core/db (SQLite) │                  │ JSON config files      │
 │  applications    │                  │  profile.json          │
 │  stage_events    │                  │  projects.json         │
 │  job_queue       │                  │  settings.json         │
@@ -295,21 +296,32 @@ is set, so the two modes don't fight each other.
 
 ```
 CVCreater/
-├── app.py                    # Flask app + blueprint registration (~40 lines)
-├── config.py                 # Paths, limits, demo-workspace bootstrap
-├── gemini.py                 # The single Gemini call site
-├── store.py                  # profile/projects/settings JSON + prompt text
-├── tracker.py                # Application logging
-├── generate.py               # Prompt builders (CV, Anschreiben, summary)
+├── app.py                    # Flask app + blueprint registration (the only root module)
+├── core/                     # Foundation: paths, storage, helpers
+│   ├── config.py             # Paths, limits, demo-workspace bootstrap
+│   ├── paths.py              # ROOT — core/ sits one level below it
+│   ├── db.py                 # SQLite DAL (applications + stage_events)
+│   ├── store.py              # profile/projects/settings JSON + prompt text
+│   ├── tracker.py            # Application logging
+│   ├── util.py               # Date + URL helpers
+│   ├── demo_mode.py          # Demo workspace under data/.demo/
+│   └── personal_config.py    # Contact loader (cv_personal.json)
+├── ai/                       # Everything that talks to Gemini
+│   ├── gemini.py             # The single Gemini call site
+│   └── generate.py           # Prompt builders (CV, Anschreiben, summary)
 ├── prompts/                  # The prompt texts as .md + the loader
 │   ├── __init__.py           # render("<name>", **values) — $placeholders
 │   └── *.md                  # One file per prompt, edited without touching .py
-├── render.py                 # CV / Anschreiben / Projektliste HTML
-├── util.py                   # Date + URL helpers
-├── routes_*.py               # One blueprint per view
-├── db.py                     # SQLite DAL (applications + stage_events)
-├── cv_layouts.py             # CV layout templates (Modern / Sidebar / Classic)
-├── personal_config.py        # Contact loader (cv_personal.json)
+├── render/
+│   ├── documents.py          # CV / Anschreiben / Projektliste HTML
+│   └── cv_layouts.py         # CV layout templates (Modern / Sidebar / Classic)
+├── routes/                   # One blueprint per view
+│   ├── generator.py          # generate / render / export / fetch-job
+│   ├── profile.py            # profile CRUD
+│   ├── projects.py           # projects CRUD + Projektliste
+│   ├── settings.py           # writing style + CV-PDF import
+│   ├── applications.py       # application tracker
+│   └── queue.py              # job queue + bookmarklet
 ├── templates/
 │   ├── index.html            # Shell: includes partials, loads static assets
 │   └── partials/             # Markup per view

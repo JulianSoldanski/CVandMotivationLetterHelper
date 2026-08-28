@@ -5,9 +5,7 @@ import uuid
 from flask import Blueprint, jsonify, request
 
 from core import config
-
 from core import db
-
 from core.tracker import apply_stage_transition, load_applications
 from core.util import _normalize_calendar_date, _now_iso, _today_iso
 

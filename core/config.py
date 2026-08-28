@@ -9,10 +9,8 @@ import os
 
 from dotenv import load_dotenv
 
-from core import db
-
-from core import demo_mode
-
+from core import db, demo_mode
+from core.paths import ROOT
 
 load_dotenv()
 
@@ -48,9 +46,9 @@ APPLICATION_STAGES = [
     "interview_3",
     "rejected",
 ]
-CV_DIR            = os.path.join(os.path.dirname(__file__), "cvs")
-ANSCHREIBEN_DIR   = os.path.join(os.path.dirname(__file__), "anschreiben")
-PROJEKTLISTE_DIR  = os.path.join(os.path.dirname(__file__), "projektliste")
+CV_DIR            = os.path.join(ROOT, "cvs")
+ANSCHREIBEN_DIR   = os.path.join(ROOT, "anschreiben")
+PROJEKTLISTE_DIR  = os.path.join(ROOT, "projektliste")
 os.makedirs(CV_DIR, exist_ok=True)
 os.makedirs(ANSCHREIBEN_DIR, exist_ok=True)
 os.makedirs(PROJEKTLISTE_DIR, exist_ok=True)

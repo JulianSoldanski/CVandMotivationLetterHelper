@@ -3,9 +3,7 @@
 import uuid
 
 from core import config
-
 from core import db
-
 from core.util import _now_iso, _today_iso
 
 def load_applications() -> list:

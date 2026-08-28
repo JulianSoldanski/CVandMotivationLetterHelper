@@ -63,7 +63,7 @@ finishes the queue item is silently marked `done` and linked to the
 created application via `application_id`.
 
 **Outcome.**
-- New `job_queue` table + `application_id` FK in [db.py](../db.py).
+- New `job_queue` table + `application_id` FK in [db.py](../core/db.py).
 - `/queue` GET/POST, `/queue/<id>` PATCH/DELETE, `/queue/add` (bookmarklet
   target), `/queue/install` (drag-and-drop install page) in
   [app.py:1595-1771](../app.py#L1595-L1771).
@@ -96,7 +96,7 @@ Use `COALESCE` in the upsert so regenerating only the Anschreiben doesn't
 wipe the existing CV snapshot (and vice versa).
 
 **Outcome.**
-- New columns in [db.py](../db.py) schema + `ALTER TABLE` migration for any
+- New columns in [db.py](../core/db.py) schema + `ALTER TABLE` migration for any
   existing DB.
 - `log_application(...)` gained kwargs for cv_content, anschreiben_content,
   layout_used, language.
@@ -106,7 +106,7 @@ wipe the existing CV snapshot (and vice versa).
   anzeigen** (profile statement, tailored experience bullets, education,
   tailored project descriptions, skills) and ✉️ **Anschreiben-Text anzeigen**
   (subject + greeting + paragraphs).
-- Files: [db.py](../db.py), [app.py](../app.py), [templates/index.html](../templates/index.html).
+- Files: [db.py](../core/db.py), [app.py](../app.py), [templates/index.html](../templates/index.html).
 
 ---
 
@@ -132,7 +132,7 @@ Rejected:
   backfill on every load, applied_at synthesis)
 
 **Outcome.**
-- New [db.py](../db.py) — connection pool, schema init, CRUD helpers.
+- New [db.py](../core/db.py) — connection pool, schema init, CRUD helpers.
 - [scripts/migrate_applications_to_sqlite.py](../scripts/migrate_applications_to_sqlite.py)
   — one-shot, refuses to run if DB already has data, renames source to
   `applications.json.bak` for safety.

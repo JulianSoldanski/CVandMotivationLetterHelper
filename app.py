@@ -1,47 +1,23 @@
 """CVCreater — Flask entry point.
 
-Wiring only: the app object and its blueprints. Everything else lives in a
-module next door:
+Wiring only: the app object and its blueprints. This is the one file left at
+the project root — everything else lives in a package:
 
-    config.py     paths, limits, demo-workspace bootstrap
-    gemini.py     the single Gemini call site
-    store.py      profile / projects / settings on disk
-    tracker.py    application logging
-    generate.py   prompt builders
-    prompts/      the prompt texts (.md) + their loader
-    render.py     CV / Anschreiben / Projektliste HTML
-    db.py         SQLite access
-    routes_*.py   one blueprint per view
+    core/       config (paths, limits, demo bootstrap), db, store, tracker,
+                util, demo_mode, personal_config
+    ai/         gemini (the single Gemini call site) + generate (prompt builders)
+    prompts/    the prompt texts as .md + their loader
+    render/     documents (CV / Anschreiben / Projektliste HTML) + cv_layouts
+    routes/     one blueprint per view
 """
 from flask import Flask
 
-from core import config
-
-from core import demo_mode
-
-from routes import applications as routes_applications
-
-from routes import generator as routes_generator
-
-from routes import profile as routes_profile
-
-from routes import projects as routes_projects
-
-from routes import queue as routes_queue
-
-from routes import settings as routes_settings
-
+from core import config, demo_mode
+from routes import applications, generator, profile, projects, queue, settings
 
 app = Flask(__name__)
 
-for module in (
-    routes_generator,
-    routes_profile,
-    routes_projects,
-    routes_settings,
-    routes_applications,
-    routes_queue,
-):
+for module in (generator, profile, projects, settings, applications, queue):
     app.register_blueprint(module.bp)
 
 if config.DEMO_ACTIVE:

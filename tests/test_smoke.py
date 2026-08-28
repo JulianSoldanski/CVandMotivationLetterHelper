@@ -15,11 +15,8 @@ from unittest import mock
 
 from _bootstrap import flask_app  # rebinds every data path first
 from core import db as db_module
-
 from ai import gemini
-
 from routes import generator as routes_generator
-
 
 
 class RouteSmokeTest(unittest.TestCase):
@@ -184,6 +181,35 @@ class GenerateTest(unittest.TestCase):
         # cost an extra Gemini round-trip per generate.
         self.assertNotIn("fit_score", data)
         self.assertNotIn("company_info", data)
+
+    def _generate(self, **payload):
+        cv = {"profile": "P", "experience": [], "education": [], "projects": [], "skills": {}}
+        with mock.patch.dict("os.environ", {"GEMINI_API_KEY": "test-key"}), \
+             mock.patch.object(routes_generator, "generate_cv_content", return_value=cv), \
+             mock.patch.object(routes_generator, "generate_job_summary", return_value={}):
+            return self.c.post("/generate", json={
+                "job_posting": "Wir suchen einen Entwickler.",
+                "company": "ACME", "position": "Dev",
+                "language": "de", "doc_type": "cv",
+                **payload,
+            })
+
+    def test_layout_used_echoes_a_known_layout(self):
+        for layout in ("modern", "classic", "sidebar"):
+            with self.subTest(layout=layout):
+                r = self._generate(layout=layout)
+                self.assertEqual(r.status_code, 200, r.get_data(as_text=True))
+                self.assertEqual(r.get_json()["layout_used"], layout)
+
+    def test_unknown_layout_falls_back_to_modern(self):
+        """The frontend adopts layout_used as its own state, so /generate must
+        never hand back a layout the renderer does not know.
+        """
+        for layout in ("nope", "", "auto", None):
+            with self.subTest(layout=layout):
+                r = self._generate(layout=layout)
+                self.assertEqual(r.status_code, 200, r.get_data(as_text=True))
+                self.assertEqual(r.get_json()["layout_used"], "modern")
 
     def test_generate_makes_no_unstubbed_calls(self):
         """Nothing may reach the network beyond the three stubbed generators.
@@ -355,7 +381,12 @@ class PromptTest(unittest.TestCase):
             for p in self._md_files()
         }
         seen = set()
-        for py in sorted(root.glob("*.py")):
+        sources = [
+            py for py in sorted(root.rglob("*.py"))
+            if "__pycache__" not in py.parts and py.parts[-2] != "tests"
+        ]
+        self.assertTrue(sources, "found no source files to scan")
+        for py in sources:
             for node in ast.walk(ast.parse(py.read_text(encoding="utf-8"))):
                 if not (isinstance(node, ast.Call)
                         and isinstance(node.func, ast.Attribute)
@@ -364,12 +395,13 @@ class PromptTest(unittest.TestCase):
                         and node.func.value.id == "prompts"):
                     continue
                 name = node.args[0].value
-                with self.subTest(prompt=name, at=f"{py.name}:{node.lineno}"):
+                where = f"{py.relative_to(root)}:{node.lineno}"
+                with self.subTest(prompt=name, at=where):
                     self.assertIn(name, declared, f"{name}.md does not exist")
                     seen.add(name)
                     self.assertEqual(
                         {kw.arg for kw in node.keywords}, declared[name],
-                        f"{py.name}:{node.lineno} does not match {name}.md",
+                        f"{where} does not match {name}.md",
                     )
         self.assertEqual(seen, set(declared), "a prompt file has no call site")
 

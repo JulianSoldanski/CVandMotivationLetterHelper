@@ -22,7 +22,7 @@ import json
 import os
 import shutil
 
-_ROOT = os.path.dirname(os.path.abspath(__file__))
+from core.paths import ROOT as _ROOT
 
 DATA_DIR    = os.path.join(_ROOT, "data")
 CONFIG_DIR  = os.path.join(_ROOT, "config")

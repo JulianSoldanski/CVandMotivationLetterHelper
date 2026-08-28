@@ -30,7 +30,7 @@ from dotenv import load_dotenv  # noqa: E402
 load_dotenv()
 
 from core import demo_mode  # noqa: E402
-from core import db         # noqa: E402
+from core import db  # noqa: E402
 
 
 def main() -> int:

@@ -5,7 +5,8 @@ from __future__ import annotations
 import json
 import os
 
-_BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+from core.paths import ROOT as _BASE_DIR
+
 EXAMPLE_FILE = os.path.join(_BASE_DIR, "config", "cv_personal.example.json")
 
 

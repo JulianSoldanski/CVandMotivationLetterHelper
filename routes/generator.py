@@ -8,10 +8,8 @@ from bs4 import BeautifulSoup
 from flask import Blueprint, jsonify, make_response, render_template, request
 
 from core import config
-
 from render.cv_layouts import LAYOUTS
 from core import demo_mode
-
 import prompts
 from ai.gemini import _generate, _call_gemini_json, call_gemini
 from ai.generate import (
@@ -109,6 +107,11 @@ def generate():
     custom_notes    = data.get("custom_notes", "").strip()
     layout          = data.get("layout", "modern")
     company_address = data.get("company_address", "").strip()
+
+    # The frontend adopts layout_used as its own state, and log_application
+    # stores it, so pin the request down to a layout that actually exists
+    # instead of echoing back whatever arrived.
+    resolved_layout = layout if layout in LAYOUTS else "modern"
 
     projects = load_projects()
     result   = {"layout_used": resolved_layout, "job_posting": job_posting}

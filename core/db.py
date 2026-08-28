@@ -8,11 +8,13 @@ import os
 import sqlite3
 from contextlib import contextmanager
 
+from core.paths import ROOT
+
 # Module-level default. demo_mode.bootstrap() rebinds this attribute at app
 # startup when DEMO_MODE=1, so every subsequent get_conn() targets the
 # isolated demo workspace instead. The indirection through this single
 # rebindable attribute avoids threading a path through every helper.
-DB_FILE = os.path.join(os.path.dirname(__file__), "data", "cvcreater.db")
+DB_FILE = os.path.join(ROOT, "data", "cvcreater.db")
 
 
 @contextmanager

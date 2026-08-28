@@ -5,7 +5,6 @@ from urllib.parse import urlsplit, urlunsplit, parse_qsl, urlencode
 
 from core import config
 
-
 def _now_iso() -> str:
     return datetime.now().isoformat(timespec="seconds")
 

@@ -5,9 +5,7 @@ import uuid
 from flask import Blueprint, Response, jsonify, request
 
 from core import config
-
 from core import db
-
 from core.util import _normalize_queue_url, _now_iso
 
 bp = Blueprint("queue", __name__)

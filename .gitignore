@@ -2,7 +2,9 @@
 *.db
 .DS_Store
 .env
-Anschreiben*
+# Generated letters — anchored to the root output dirs, so it stops swallowing
+# prompts/anschreiben*.md (git matches case-insensitively on macOS).
+/Anschreiben*/
 *.pdf
 __pycache__
 CVS/*

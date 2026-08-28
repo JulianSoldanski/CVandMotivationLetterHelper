@@ -9,7 +9,6 @@ import os
 
 from core import config
 
-
 def load_projects() -> list:
     try:
         with open(config.PROJECTS_FILE, "r", encoding="utf-8") as f:
